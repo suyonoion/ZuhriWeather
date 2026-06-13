@@ -1,11 +1,14 @@
 package com.zf.zuhriweather
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -17,8 +20,17 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 
 class ZuhriWidget : GlanceAppWidget() {
+    
+    // Injeksi Batasan Formal Glance 1.0.0+ (Siklus Asinkron)
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideContent {
+            MatriksVisualSpasial()
+        }
+    }
+
+    // Kompartemen Rendering Fisis
     @Composable
-    override fun Content() {
+    private fun MatriksVisualSpasial() {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -33,7 +45,9 @@ class ZuhriWidget : GlanceAppWidget() {
                 text = "Termal: 31°C | Fluida: 65%", 
                 style = TextStyle(color = ColorProvider(Color.White))
             )
+            
             Spacer(modifier = GlanceModifier.padding(8.dp))
+            
             Text(
                 text = "LEDGER ZONA MERAH", 
                 style = TextStyle(color = ColorProvider(Color.Red))

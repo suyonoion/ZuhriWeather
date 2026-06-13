@@ -33,4 +33,7 @@ dependencies {
     implementation 'androidx.compose.ui:ui:1.5.4'
     implementation 'androidx.glance:glance-appwidget:1.0.0'
     implementation 'androidx.glance:glance-material3:1.0.0'
+    // Matriks Penarik Data Fisis (Retrofit)
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 }

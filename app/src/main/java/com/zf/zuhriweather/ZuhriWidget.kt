@@ -26,43 +26,57 @@ import androidx.glance.unit.ColorProvider
 class ZuhriWidget : GlanceAppWidget() {
     
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // Matriks Awal (Kosong)
         var nilaiSuhu = "Memuat..."
         var nilaiAngin = "Memuat..."
+        var lokasiRuptur = "Memindai Litosfer..."
+        var skalaRuptur = "-"
 
+        // Transmisi Paralel 1: Ekstraksi Termal (Cuaca Lokal)
         try {
             val respons = NetworkMatriks.api.getKerapatanSpasial()
             nilaiSuhu = "${respons.current_weather.temperature}°C"
             nilaiAngin = "${respons.current_weather.windspeed} km/j"
         } catch (e: Exception) {
-            nilaiSuhu = "Distorsi Sinyal"
+            nilaiSuhu = "Distorsi"
             nilaiAngin = "Distorsi"
         }
 
+        // Transmisi Paralel 2: Ekstraksi Ruptur (Gempa Global)
+        try {
+            val usgsRespons = UsgsMatriks.api.getLedgerZonaMerah()
+            // Jika ada ruptur struktural terdeteksi di atas 6.0 Mw
+            if (usgsRespons.features.isNotEmpty()) {
+                val rupturTerbesar = usgsRespons.features[0].properties
+                // Ekstrak string lokasi agar tidak merusak batas dimensi UI
+                lokasiRuptur = rupturTerbesar.place.take(25) + "..." 
+                skalaRuptur = "${rupturTerbesar.mag} Mw"
+            } else {
+                lokasiRuptur = "Nihil Anomali Kritis"
+                skalaRuptur = "-"
+            }
+        } catch (e: Exception) {
+            lokasiRuptur = "Distorsi USGS"
+        }
+
         provideContent {
-            MatriksVisualSpasial(suhu = nilaiSuhu, angin = nilaiAngin)
+            MatriksVisualSpasial(nilaiSuhu, nilaiAngin, lokasiRuptur, skalaRuptur)
         }
     }
 
     @Composable
-    private fun MatriksVisualSpasial(suhu: String, angin: String) {
+    private fun MatriksVisualSpasial(suhu: String, angin: String, lokasiGempa: String, skalaGempa: String) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(Color.DarkGray)
                 .padding(12.dp)
         ) {
-            Text(
-                text = "[ZF] SPASIAL: GRID 110.20E (KENDAL)", 
-                style = TextStyle(color = ColorProvider(Color.Cyan))
-            )
-            Text(
-                text = "Termal: $suhu | Vektor Angin: $angin", 
-                style = TextStyle(color = ColorProvider(Color.White))
-            )
+            Text(text = "[ZF] SPASIAL: GRID 110.20E", style = TextStyle(color = ColorProvider(Color.Cyan)))
+            Text(text = "Termal: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
             
-            Spacer(modifier = GlanceModifier.padding(8.dp))
+            Spacer(modifier = GlanceModifier.padding(4.dp))
             
-            // Injeksi Pemicu Transmisi Manual
             Text(
                 text = "[SINKRONISASI MATRIKS]",
                 modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
@@ -71,23 +85,17 @@ class ZuhriWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.padding(8.dp))
 
-            Text(
-                text = "LEDGER ZONA MERAH", 
-                style = TextStyle(color = ColorProvider(Color.Red))
-            )
+            Text(text = "LEDGER ZONA MERAH (USGS)", style = TextStyle(color = ColorProvider(Color.Red)))
             Row {
-                Text(text = "Filipina | ", style = TextStyle(color = ColorProvider(Color.White)))
-                Text(text = "7.8 Mw | ", style = TextStyle(color = ColorProvider(Color.Yellow)))
-                Text(text = "Ruptur", style = TextStyle(color = ColorProvider(Color.White)))
+                Text(text = "$lokasiGempa | ", style = TextStyle(color = ColorProvider(Color.White)))
+                Text(text = skalaGempa, style = TextStyle(color = ColorProvider(Color.Yellow)))
             }
         }
     }
 }
 
-// Protokol Pemaksaan Ekuilibrium Ulang
 class SegarkanMatriksAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        // Memaksa sistem memutar ulang fungsi provideGlance()
         ZuhriWidget().update(context, glanceId)
     }
 }

@@ -21,16 +21,31 @@ import androidx.glance.unit.ColorProvider
 
 class ZuhriWidget : GlanceAppWidget() {
     
-    // Injeksi Batasan Formal Glance 1.0.0+ (Siklus Asinkron)
+    // Injeksi Transmisi Asinkron sebelum layar dirender
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        
+        var nilaiSuhu = "Memuat..."
+        var nilaiAngin = "Memuat..."
+
+        try {
+            // Menarik kerapatan informasi spasial langsung dari API Peladen
+            val respons = NetworkMatriks.api.getKerapatanSpasial()
+            nilaiSuhu = "${respons.current_weather.temperature}°C"
+            nilaiAngin = "${respons.current_weather.windspeed} km/j"
+        } catch (e: Exception) {
+            // Tangkapan ekuilibrium jika terjadi ruptur jaringan (offline)
+            nilaiSuhu = "Distorsi Sinyal"
+            nilaiAngin = "Distorsi"
+        }
+
         provideContent {
-            MatriksVisualSpasial()
+            // Meneruskan data fisis nyata ke dalam matriks visual
+            MatriksVisualSpasial(suhu = nilaiSuhu, angin = nilaiAngin)
         }
     }
 
-    // Kompartemen Rendering Fisis
     @Composable
-    private fun MatriksVisualSpasial() {
+    private fun MatriksVisualSpasial(suhu: String, angin: String) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
@@ -38,16 +53,18 @@ class ZuhriWidget : GlanceAppWidget() {
                 .padding(12.dp)
         ) {
             Text(
-                text = "[ZF] SPASIAL: DESA BLOROK", 
+                text = "[ZF] SPASIAL: GRID 110.20E (KENDAL)", 
                 style = TextStyle(color = ColorProvider(Color.Cyan))
             )
+            // Parameter dinamis merender di sini
             Text(
-                text = "Termal: 31°C | Fluida: 65%", 
+                text = "Termal: $suhu | Vektor Angin: $angin", 
                 style = TextStyle(color = ColorProvider(Color.White))
             )
             
             Spacer(modifier = GlanceModifier.padding(8.dp))
             
+            // Ledger Bencana sementara masih dipertahankan statis sebelum transisi
             Text(
                 text = "LEDGER ZONA MERAH", 
                 style = TextStyle(color = ColorProvider(Color.Red))

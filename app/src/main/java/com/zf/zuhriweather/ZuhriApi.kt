@@ -4,45 +4,24 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 
-// --- MATRIKS CUACA (OPEN-METEO) ---
-data class CuacaResponse(val current_weather: CurrentWeather)
-data class CurrentWeather(val temperature: Double, val windspeed: Double)
+// Struktur Penampung Kerapatan Data dari Peladen HF Anda
+data class HfResponse(val cuaca: CuacaData, val bencana: BencanaData)
+data class CuacaData(val suhu: String, val angin: String)
+data class BencanaData(val lokasi: String, val skala: String, val status_bahaya: String, val kode_warna: String)
 
-interface ZuhriApi {
-    @GET("v1/forecast?latitude=-6.92&longitude=110.20&current_weather=true")
-    suspend fun getKerapatanSpasial(): CuacaResponse
+interface HfApi {
+    // Menembak langsung ke Ruang Brankas Spasial
+    @GET("spasial/sinkronisasi")
+    suspend fun getSinkronisasi(): HfResponse
 }
 
 object NetworkMatriks {
-    val api: ZuhriApi by lazy {
+    val api: HfApi by lazy {
         Retrofit.Builder()
-            .baseUrl("https://api.open-meteo.com/")
+            // Tautan Absolut Peladen Awan Anda
+            .baseUrl("https://suyonoion-zuhribackend.hf.space/") 
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(ZuhriApi::class.java)
-    }
-}
-
-// --- MATRIKS RUPTUR LITOSFER (USGS) BARU ---
-
-// 1. Struktur Penampung Kerapatan Seismik
-data class UsgsResponse(val features: List<RupturFeature>)
-data class RupturFeature(val properties: RupturProperties)
-data class RupturProperties(val place: String, val mag: Double)
-
-// 2. Batasan Formal Gerbang Peladen USGS (Mengambil Gempa Signifikan Seminggu Terakhir)
-interface UsgsApi {
-    @GET("earthquakes/feed/v1.0/summary/significant_week.geojson")
-    suspend fun getLedgerZonaMerah(): UsgsResponse
-}
-
-// 3. Mesin Transmisi Paralel
-object UsgsMatriks {
-    val api: UsgsApi by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://earthquake.usgs.gov/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(UsgsApi::class.java)
+            .create(HfApi::class.java)
     }
 }

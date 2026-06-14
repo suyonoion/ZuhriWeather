@@ -28,90 +28,52 @@ import kotlinx.coroutines.withContext
 class ZuhriWidget : GlanceAppWidget() {
     
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        var nilaiSuhu = "Memuat..."
-        var nilaiAngin = "Memuat..."
-        var lokasiAwam = "Memindai..."
-        var skalaRuptur = "-"
-        var statusBahaya = "Menunggu..."
+        var suhu = "Memuat..."
+        var angin = "Memuat..."
+        var lokasi = "Memindai Litosfer..."
+        var skala = "-"
+        var status = "Menunggu..."
         var warnaStatus = Color.Gray
 
-        // Transmisi 1: Cuaca (Dialihkan ke Jalur IO Absolut)
         try {
+            // Transmisi Tunggal Asinkron ke Peladen HF Anda
             val respons = withContext(Dispatchers.IO) {
-                NetworkMatriks.api.getKerapatanSpasial()
+                NetworkMatriks.api.getSinkronisasi()
             }
-            nilaiSuhu = "${respons.current_weather.temperature}°C"
-            nilaiAngin = "${respons.current_weather.windspeed} km/j"
+            
+            suhu = respons.cuaca.suhu
+            angin = respons.cuaca.angin
+            lokasi = respons.bencana.lokasi
+            skala = respons.bencana.skala
+            status = respons.bencana.status_bahaya
+            
+            // Translasi Warna Fisis
+            warnaStatus = when(respons.bencana.kode_warna) {
+                "Red" -> Color.Red
+                "Orange" -> Color(0xFFFFA500)
+                "Yellow" -> Color.Yellow
+                else -> Color.Green
+            }
+            
         } catch (e: Exception) {
-            nilaiSuhu = "Error Cuaca"
-            // Cetak Log Fisis Mesin ke Layar
-            nilaiAngin = (e.localizedMessage ?: "Distorsi").take(20) 
-        }
-
-        // Transmisi 2: Bencana (Dialihkan ke Jalur IO Absolut)
-        try {
-            val usgsRespons = withContext(Dispatchers.IO) {
-                UsgsMatriks.api.getLedgerZonaMerah()
-            }
-            if (usgsRespons.features.isNotEmpty()) {
-                val ruptur = usgsRespons.features[0].properties
-                val rawLokasi = ruptur.place
-                
-                lokasiAwam = if (rawLokasi.contains(" of ")) {
-                    rawLokasi.substringAfter(" of ").take(25) + "..."
-                } else {
-                    rawLokasi.take(25) + "..."
-                }
-
-                skalaRuptur = "${ruptur.mag} SR"
-
-                when {
-                    ruptur.mag >= 6.0 -> {
-                        statusBahaya = "[AWAS] Potensi Merusak!"
-                        warnaStatus = Color.Red
-                    }
-                    ruptur.mag >= 5.0 -> {
-                        statusBahaya = "[WASPADA] Getaran Kuat"
-                        warnaStatus = Color(0xFFFFA500)
-                    }
-                    else -> {
-                        statusBahaya = "[INFO] Getaran Ringan"
-                        warnaStatus = Color.Yellow
-                    }
-                }
-            } else {
-                lokasiAwam = "Nihil Gempa Signifikan"
-                skalaRuptur = ""
-                statusBahaya = "Aman"
-                warnaStatus = Color.Green
-            }
-        } catch (e: Exception) {
-            // Cetak Log Fisis Mesin ke Layar
-            lokasiAwam = (e.localizedMessage ?: "Error Transmisi").take(30)
-            skalaRuptur = "-"
-            statusBahaya = "Gagal"
+            suhu = "Distorsi"
+            angin = "Distorsi"
+            lokasi = "Ruptur Transmisi Peladen"
+            status = "Offline"
             warnaStatus = Color.Red
         }
 
         provideContent {
-            MatriksVisualPublik(nilaiSuhu, nilaiAngin, lokasiAwam, skalaRuptur, statusBahaya, warnaStatus)
+            MatriksVisualPublik(suhu, angin, lokasi, skala, status, warnaStatus)
         }
     }
 
     @Composable
     private fun MatriksVisualPublik(
-        suhu: String, 
-        angin: String, 
-        lokasi: String, 
-        skala: String, 
-        status: String, 
-        warna: Color
+        suhu: String, angin: String, lokasi: String, skala: String, status: String, warna: Color
     ) {
         Column(
-            modifier = GlanceModifier
-                .fillMaxSize()
-                .background(Color.DarkGray)
-                .padding(12.dp)
+            modifier = GlanceModifier.fillMaxSize().background(Color.DarkGray).padding(12.dp)
         ) {
             Text(text = "CUACA LOKAL (KENDAL)", style = TextStyle(color = ColorProvider(Color.Cyan)))
             Text(text = "Suhu: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))

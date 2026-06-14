@@ -55,14 +55,32 @@ class ZuhriWidget : GlanceAppWidget() {
                 else -> ColorProvider(Color.Green)
             }
             
-        } catch (e: Exception) {
+        } catch (e: java.net.UnknownHostException) {
+            // Litosfer jaringan lokal hancur (Tidak ada internet/kuota)
             suhu = "Distorsi"
-            angin = (e.localizedMessage ?: "Timeout").take(15)
-            lokasi = "Ruptur Jaringan"
+            angin = "Sinyal Terputus"
+            lokasi = "Gerbang Lokal Tertutup"
             skala = "-"
             status = "Offline"
             warnaStatus = ColorProvider(Color.Red)
+        } catch (e: java.net.SocketTimeoutException) {
+            // Internet ada, tetapi peladen Barat gagal memuntahkan data
+            suhu = "Hibernasi"
+            angin = "Peladen Tidur"
+            lokasi = "Menunggu Ruang Awan..."
+            skala = "-"
+            status = "Timeout"
+            warnaStatus = ColorProvider(Color(0xFFFFA500)) // Oranye
+        } catch (e: Exception) {
+            // Ruptur sistemik lainnya
+            suhu = "Distorsi"
+            angin = "Ruptur Sistem"
+            lokasi = "Kegagalan Fisis"
+            skala = "-"
+            status = "Error"
+            warnaStatus = ColorProvider(Color.Red)
         }
+
 
         provideContent {
             // Memastikan latar belakang menggunakan ColorProvider murni demi ekuilibrium RemoteViews

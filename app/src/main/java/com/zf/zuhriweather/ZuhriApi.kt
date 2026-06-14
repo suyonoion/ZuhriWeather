@@ -17,11 +17,12 @@ interface HfApi {
 }
 
 object NetworkMatriks {
-    // Injeksi pelebaran dimensi waktu tunggu (60 Detik) untuk melawan Cold Start
+    // Injeksi Asimetri Waktu
     private val klienToleransi = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS) // Deteksi fisis: Jika dalam 10 detik gerbang internet tidak ditemukan, langsung batalkan.
+        .readTimeout(60, TimeUnit.SECONDS)    // Toleransi peladen: Jika internet ada, tunggu hingga 60 detik agar HF selesai kompilasi (Cold Start).
         .build()
+
 
     val api: HfApi by lazy {
         Retrofit.Builder()

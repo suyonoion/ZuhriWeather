@@ -33,7 +33,9 @@ class ZuhriWidget : GlanceAppWidget() {
         var lokasi = "Memindai Litosfer..."
         var skala = "-"
         var status = "Menunggu..."
-        var warnaStatus = Color.Gray
+        
+        // Mengunci standardisasi ColorProvider sejak awal fasa inisiasi
+        var warnaStatus = ColorProvider(Color.Gray)
 
         try {
             val respons = withContext(Dispatchers.IO) {
@@ -47,34 +49,39 @@ class ZuhriWidget : GlanceAppWidget() {
             status = respons.bencana.status_bahaya
             
             warnaStatus = when(respons.bencana.kode_warna) {
-                "Red" -> Color.Red
-                "Orange" -> Color(0xFFFFA500)
-                "Yellow" -> Color.Yellow
-                else -> Color.Green
+                "Red" -> ColorProvider(Color.Red)
+                "Orange" -> ColorProvider(Color(0xFFFFA500))
+                "Yellow" -> ColorProvider(Color.Yellow)
+                else -> ColorProvider(Color.Green)
             }
             
         } catch (e: Exception) {
             suhu = "Distorsi"
-            // Mengekstraksi paksa alasan kegagalan mesin ke parameter Angin
-            angin = (e.localizedMessage ?: "Unknown").take(20)
-            lokasi = "Ruptur Transmisi"
+            angin = (e.localizedMessage ?: "Timeout").take(15)
+            lokasi = "Ruptur Jaringan"
             skala = "-"
             status = "Offline"
-            warnaStatus = Color.Red
+            warnaStatus = ColorProvider(Color.Red)
         }
 
         provideContent {
-            MatriksVisualPublik(suhu, angin, lokasi, skala, status, warnaStatus)
+            // Memastikan latar belakang menggunakan ColorProvider murni demi ekuilibrium RemoteViews
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .background(ColorProvider(Color(0xFF212121)))
+                    .padding(12.dp)
+            ) {
+                MatriksVisualPublik(suhu, angin, lokasi, skala, status, warnaStatus)
+            }
         }
     }
 
     @Composable
     private fun MatriksVisualPublik(
-        suhu: String, angin: String, lokasi: String, skala: String, status: String, warna: Color
+        suhu: String, angin: String, lokasi: String, skala: String, status: String, warna: ColorProvider
     ) {
-        Column(
-            modifier = GlanceModifier.fillMaxSize().background(Color.DarkGray).padding(12.dp)
-        ) {
+        Column {
             Text(text = "CUACA LOKAL (KENDAL)", style = TextStyle(color = ColorProvider(Color.Cyan)))
             Text(text = "Suhu: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
             
@@ -86,13 +93,14 @@ class ZuhriWidget : GlanceAppWidget() {
                 style = TextStyle(color = ColorProvider(Color.LightGray))
             )
 
-            Spacer(modifier = GlanceModifier.padding(8.dp))
+            Spacer(modifier = GlanceModifier.padding(6.dp))
 
             Text(text = "INFO GEMPA TERBARU", style = TextStyle(color = ColorProvider(Color.Red)))
             Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White)))
+            
             Row {
                 Text(text = "$skala | ", style = TextStyle(color = ColorProvider(Color.White)))
-                Text(text = status, style = TextStyle(color = ColorProvider(warna)))
+                Text(text = status, style = TextStyle(color = warna))
             }
         }
     }

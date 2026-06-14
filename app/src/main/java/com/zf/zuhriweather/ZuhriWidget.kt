@@ -22,6 +22,8 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ZuhriWidget : GlanceAppWidget() {
     
@@ -30,37 +32,39 @@ class ZuhriWidget : GlanceAppWidget() {
         var nilaiAngin = "Memuat..."
         var lokasiAwam = "Memindai..."
         var skalaRuptur = "-"
-        var statusBahaya = "Aman"
-        var warnaStatus = Color.Green
+        var statusBahaya = "Menunggu..."
+        var warnaStatus = Color.Gray
 
-        // Transmisi 1: Cuaca
+        // Transmisi 1: Cuaca (Dialihkan ke Jalur IO Absolut)
         try {
-            val respons = NetworkMatriks.api.getKerapatanSpasial()
+            val respons = withContext(Dispatchers.IO) {
+                NetworkMatriks.api.getKerapatanSpasial()
+            }
             nilaiSuhu = "${respons.current_weather.temperature}°C"
             nilaiAngin = "${respons.current_weather.windspeed} km/j"
         } catch (e: Exception) {
-            nilaiSuhu = "Offline"
-            nilaiAngin = "Offline"
+            nilaiSuhu = "Error Cuaca"
+            // Cetak Log Fisis Mesin ke Layar
+            nilaiAngin = (e.localizedMessage ?: "Distorsi").take(20) 
         }
 
-        // Transmisi 2: Bencana dengan Lapis Translasi Publik
+        // Transmisi 2: Bencana (Dialihkan ke Jalur IO Absolut)
         try {
-            val usgsRespons = UsgsMatriks.api.getLedgerZonaMerah()
+            val usgsRespons = withContext(Dispatchers.IO) {
+                UsgsMatriks.api.getLedgerZonaMerah()
+            }
             if (usgsRespons.features.isNotEmpty()) {
                 val ruptur = usgsRespons.features[0].properties
-                
-                // 1. Translasi Lokasi: Membuang noise "23 km E of..."
-                // Jika mengandung kata " of ", ambil teks setelahnya saja.
                 val rawLokasi = ruptur.place
+                
                 lokasiAwam = if (rawLokasi.contains(" of ")) {
                     rawLokasi.substringAfter(" of ").take(25) + "..."
                 } else {
                     rawLokasi.take(25) + "..."
                 }
 
-                skalaRuptur = "${ruptur.mag} SR" // Awam lebih paham SR (Skala Richter) daripada Mw
+                skalaRuptur = "${ruptur.mag} SR"
 
-                // 2. Translasi Status Bahaya Berdasarkan Skala
                 when {
                     ruptur.mag >= 6.0 -> {
                         statusBahaya = "[AWAS] Potensi Merusak!"
@@ -68,7 +72,7 @@ class ZuhriWidget : GlanceAppWidget() {
                     }
                     ruptur.mag >= 5.0 -> {
                         statusBahaya = "[WASPADA] Getaran Kuat"
-                        warnaStatus = Color(0xFFFFA500) // Warna Oranye
+                        warnaStatus = Color(0xFFFFA500)
                     }
                     else -> {
                         statusBahaya = "[INFO] Getaran Ringan"
@@ -76,12 +80,17 @@ class ZuhriWidget : GlanceAppWidget() {
                     }
                 }
             } else {
-                lokasiAwam = "Tidak Ada Gempa Signifikan"
+                lokasiAwam = "Nihil Gempa Signifikan"
                 skalaRuptur = ""
-                statusBahaya = "Aman Terkendali"
+                statusBahaya = "Aman"
+                warnaStatus = Color.Green
             }
         } catch (e: Exception) {
-            lokasiAwam = "Gagal Memuat Data Gempa"
+            // Cetak Log Fisis Mesin ke Layar
+            lokasiAwam = (e.localizedMessage ?: "Error Transmisi").take(30)
+            skalaRuptur = "-"
+            statusBahaya = "Gagal"
+            warnaStatus = Color.Red
         }
 
         provideContent {
@@ -104,7 +113,6 @@ class ZuhriWidget : GlanceAppWidget() {
                 .background(Color.DarkGray)
                 .padding(12.dp)
         ) {
-            // Sektor Cuaca disederhanakan bahasanya
             Text(text = "CUACA LOKAL (KENDAL)", style = TextStyle(color = ColorProvider(Color.Cyan)))
             Text(text = "Suhu: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
             
@@ -118,7 +126,6 @@ class ZuhriWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.padding(8.dp))
 
-            // Sektor Bencana diterjemahkan menjadi peringatan awam
             Text(text = "INFO GEMPA TERBARU", style = TextStyle(color = ColorProvider(Color.Red)))
             Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White)))
             Row {

@@ -36,7 +36,6 @@ class ZuhriWidget : GlanceAppWidget() {
         var warnaStatus = Color.Gray
 
         try {
-            // Transmisi Tunggal Asinkron ke Peladen HF Anda
             val respons = withContext(Dispatchers.IO) {
                 NetworkMatriks.api.getSinkronisasi()
             }
@@ -47,7 +46,6 @@ class ZuhriWidget : GlanceAppWidget() {
             skala = respons.bencana.skala
             status = respons.bencana.status_bahaya
             
-            // Translasi Warna Fisis
             warnaStatus = when(respons.bencana.kode_warna) {
                 "Red" -> Color.Red
                 "Orange" -> Color(0xFFFFA500)
@@ -57,8 +55,10 @@ class ZuhriWidget : GlanceAppWidget() {
             
         } catch (e: Exception) {
             suhu = "Distorsi"
-            angin = "Distorsi"
-            lokasi = "Ruptur Transmisi Peladen"
+            // Mengekstraksi paksa alasan kegagalan mesin ke parameter Angin
+            angin = (e.localizedMessage ?: "Unknown").take(20)
+            lokasi = "Ruptur Transmisi"
+            skala = "-"
             status = "Offline"
             warnaStatus = Color.Red
         }

@@ -25,72 +25,35 @@ import androidx.glance.unit.ColorProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+// 1. Matriks Memori Statis (Cache Lokal) - Bebas dari pemblokiran OS
+object MatriksCache {
+    var suhu = "-"
+    var angin = "-"
+    var lokasi = "Menunggu Transmisi..."
+    var skala = "-"
+    var status = "Standby"
+    var warnaStatus = Color.Gray
+}
+
 class ZuhriWidget : GlanceAppWidget() {
     
+    // 2. Proyektor Visual Murni - Merender instan dalam 1 milidetik
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        var suhu = "Memuat..."
-        var angin = "Memuat..."
-        var lokasi = "Memindai Litosfer..."
-        var skala = "-"
-        var status = "Menunggu..."
-        
-        // Mengunci standardisasi ColorProvider sejak awal fasa inisiasi
-        var warnaStatus = ColorProvider(Color.Gray)
-
-        try {
-            val respons = withContext(Dispatchers.IO) {
-                NetworkMatriks.api.getSinkronisasi()
-            }
-            
-            suhu = respons.cuaca.suhu
-            angin = respons.cuaca.angin
-            lokasi = respons.bencana.lokasi
-            skala = respons.bencana.skala
-            status = respons.bencana.status_bahaya
-            
-            warnaStatus = when(respons.bencana.kode_warna) {
-                "Red" -> ColorProvider(Color.Red)
-                "Orange" -> ColorProvider(Color(0xFFFFA500))
-                "Yellow" -> ColorProvider(Color.Yellow)
-                else -> ColorProvider(Color.Green)
-            }
-            
-        } catch (e: java.net.UnknownHostException) {
-            // Litosfer jaringan lokal hancur (Tidak ada internet/kuota)
-            suhu = "Distorsi"
-            angin = "Sinyal Terputus"
-            lokasi = "Gerbang Lokal Tertutup"
-            skala = "-"
-            status = "Offline"
-            warnaStatus = ColorProvider(Color.Red)
-        } catch (e: java.net.SocketTimeoutException) {
-            // Internet ada, tetapi peladen Barat gagal memuntahkan data
-            suhu = "Hibernasi"
-            angin = "Peladen Tidur"
-            lokasi = "Menunggu Ruang Awan..."
-            skala = "-"
-            status = "Timeout"
-            warnaStatus = ColorProvider(Color(0xFFFFA500)) // Oranye
-        } catch (e: Exception) {
-            // Ruptur sistemik lainnya
-            suhu = "Distorsi"
-            angin = "Ruptur Sistem"
-            lokasi = "Kegagalan Fisis"
-            skala = "-"
-            status = "Error"
-            warnaStatus = ColorProvider(Color.Red)
-        }
-
-
         provideContent {
-            // Memastikan latar belakang menggunakan ColorProvider murni demi ekuilibrium RemoteViews
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
                     .background(ColorProvider(Color(0xFF212121)))
                     .padding(12.dp)
             ) {
-                MatriksVisualPublik(suhu, angin, lokasi, skala, status, warnaStatus)
+                MatriksVisualPublik(
+                    MatriksCache.suhu, 
+                    MatriksCache.angin, 
+                    MatriksCache.lokasi, 
+                    MatriksCache.skala, 
+                    MatriksCache.status, 
+                    ColorProvider(MatriksCache.warnaStatus)
+                )
             }
         }
     }
@@ -124,8 +87,55 @@ class ZuhriWidget : GlanceAppWidget() {
     }
 }
 
+// 3. Mesin Transmisi Independen - Dieksekusi hanya saat tombol ditekan
 class SegarkanMatriksAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        
+        // Fase 1: Pembaruan Layar menjadi status Memuat (Instan)
+        MatriksCache.suhu = "Siklus..."
+        MatriksCache.angin = "Koneksi..."
+        MatriksCache.lokasi = "Mengekstrak Litosfer..."
+        MatriksCache.status = "Proses"
+        MatriksCache.warnaStatus = Color.Yellow
+        ZuhriWidget().update(context, glanceId)
+
+        // Fase 2: Pengeboran Jaringan ke Peladen Barat
+        try {
+            val respons = withContext(Dispatchers.IO) {
+                NetworkMatriks.api.getSinkronisasi()
+            }
+            
+            MatriksCache.suhu = respons.cuaca.suhu
+            MatriksCache.angin = respons.cuaca.angin
+            MatriksCache.lokasi = respons.bencana.lokasi
+            MatriksCache.skala = respons.bencana.skala
+            MatriksCache.status = respons.bencana.status_bahaya
+            
+            MatriksCache.warnaStatus = when(respons.bencana.kode_warna) {
+                "Red" -> Color.Red
+                "Orange" -> Color(0xFFFFA500)
+                "Yellow" -> Color.Yellow
+                else -> Color.Green
+            }
+            
+        } catch (e: java.net.UnknownHostException) {
+            MatriksCache.angin = "Sinyal Terputus"
+            MatriksCache.lokasi = "Gerbang Lokal Tertutup"
+            MatriksCache.status = "Offline"
+            MatriksCache.warnaStatus = Color.Red
+        } catch (e: java.net.SocketTimeoutException) {
+            MatriksCache.angin = "Peladen Bangun"
+            MatriksCache.lokasi = "Klik [PERBARUI DATA] Sekali Lagi" // Instruksi mekanis
+            MatriksCache.status = "Timeout"
+            MatriksCache.warnaStatus = Color(0xFFFFA500) 
+        } catch (e: Exception) {
+            MatriksCache.angin = "Ruptur Sistem"
+            MatriksCache.lokasi = "Kegagalan Fisis"
+            MatriksCache.status = "Error"
+            MatriksCache.warnaStatus = Color.Red
+        }
+
+        // Fase 3: Pencetakan Data Matang ke Layar (Instan)
         ZuhriWidget().update(context, glanceId)
     }
 }

@@ -26,69 +26,104 @@ import androidx.glance.unit.ColorProvider
 class ZuhriWidget : GlanceAppWidget() {
     
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Matriks Awal (Kosong)
         var nilaiSuhu = "Memuat..."
         var nilaiAngin = "Memuat..."
-        var lokasiRuptur = "Memindai Litosfer..."
+        var lokasiAwam = "Memindai..."
         var skalaRuptur = "-"
+        var statusBahaya = "Aman"
+        var warnaStatus = Color.Green
 
-        // Transmisi Paralel 1: Ekstraksi Termal (Cuaca Lokal)
+        // Transmisi 1: Cuaca
         try {
             val respons = NetworkMatriks.api.getKerapatanSpasial()
             nilaiSuhu = "${respons.current_weather.temperature}°C"
             nilaiAngin = "${respons.current_weather.windspeed} km/j"
         } catch (e: Exception) {
-            nilaiSuhu = "Distorsi"
-            nilaiAngin = "Distorsi"
+            nilaiSuhu = "Offline"
+            nilaiAngin = "Offline"
         }
 
-        // Transmisi Paralel 2: Ekstraksi Ruptur (Gempa Global)
+        // Transmisi 2: Bencana dengan Lapis Translasi Publik
         try {
             val usgsRespons = UsgsMatriks.api.getLedgerZonaMerah()
-            // Jika ada ruptur struktural terdeteksi di atas 6.0 Mw
             if (usgsRespons.features.isNotEmpty()) {
-                val rupturTerbesar = usgsRespons.features[0].properties
-                // Ekstrak string lokasi agar tidak merusak batas dimensi UI
-                lokasiRuptur = rupturTerbesar.place.take(25) + "..." 
-                skalaRuptur = "${rupturTerbesar.mag} Mw"
+                val ruptur = usgsRespons.features[0].properties
+                
+                // 1. Translasi Lokasi: Membuang noise "23 km E of..."
+                // Jika mengandung kata " of ", ambil teks setelahnya saja.
+                val rawLokasi = ruptur.place
+                lokasiAwam = if (rawLokasi.contains(" of ")) {
+                    rawLokasi.substringAfter(" of ").take(25) + "..."
+                } else {
+                    rawLokasi.take(25) + "..."
+                }
+
+                skalaRuptur = "${ruptur.mag} SR" // Awam lebih paham SR (Skala Richter) daripada Mw
+
+                // 2. Translasi Status Bahaya Berdasarkan Skala
+                when {
+                    ruptur.mag >= 6.0 -> {
+                        statusBahaya = "[AWAS] Potensi Merusak!"
+                        warnaStatus = Color.Red
+                    }
+                    ruptur.mag >= 5.0 -> {
+                        statusBahaya = "[WASPADA] Getaran Kuat"
+                        warnaStatus = Color(0xFFFFA500) // Warna Oranye
+                    }
+                    else -> {
+                        statusBahaya = "[INFO] Getaran Ringan"
+                        warnaStatus = Color.Yellow
+                    }
+                }
             } else {
-                lokasiRuptur = "Nihil Anomali Kritis"
-                skalaRuptur = "-"
+                lokasiAwam = "Tidak Ada Gempa Signifikan"
+                skalaRuptur = ""
+                statusBahaya = "Aman Terkendali"
             }
         } catch (e: Exception) {
-            lokasiRuptur = "Distorsi USGS"
+            lokasiAwam = "Gagal Memuat Data Gempa"
         }
 
         provideContent {
-            MatriksVisualSpasial(nilaiSuhu, nilaiAngin, lokasiRuptur, skalaRuptur)
+            MatriksVisualPublik(nilaiSuhu, nilaiAngin, lokasiAwam, skalaRuptur, statusBahaya, warnaStatus)
         }
     }
 
     @Composable
-    private fun MatriksVisualSpasial(suhu: String, angin: String, lokasiGempa: String, skalaGempa: String) {
+    private fun MatriksVisualPublik(
+        suhu: String, 
+        angin: String, 
+        lokasi: String, 
+        skala: String, 
+        status: String, 
+        warna: Color
+    ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(Color.DarkGray)
                 .padding(12.dp)
         ) {
-            Text(text = "[ZF] SPASIAL: GRID 110.20E", style = TextStyle(color = ColorProvider(Color.Cyan)))
-            Text(text = "Termal: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
+            // Sektor Cuaca disederhanakan bahasanya
+            Text(text = "CUACA LOKAL (KENDAL)", style = TextStyle(color = ColorProvider(Color.Cyan)))
+            Text(text = "Suhu: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
             
             Spacer(modifier = GlanceModifier.padding(4.dp))
             
             Text(
-                text = "[SINKRONISASI MATRIKS]",
+                text = "↻ PERBARUI DATA",
                 modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
-                style = TextStyle(color = ColorProvider(Color.Green))
+                style = TextStyle(color = ColorProvider(Color.LightGray))
             )
 
             Spacer(modifier = GlanceModifier.padding(8.dp))
 
-            Text(text = "LEDGER ZONA MERAH (USGS)", style = TextStyle(color = ColorProvider(Color.Red)))
+            // Sektor Bencana diterjemahkan menjadi peringatan awam
+            Text(text = "INFO GEMPA TERBARU", style = TextStyle(color = ColorProvider(Color.Red)))
+            Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White)))
             Row {
-                Text(text = "$lokasiGempa | ", style = TextStyle(color = ColorProvider(Color.White)))
-                Text(text = skalaGempa, style = TextStyle(color = ColorProvider(Color.Yellow)))
+                Text(text = "$skala | ", style = TextStyle(color = ColorProvider(Color.White)))
+                Text(text = status, style = TextStyle(color = ColorProvider(warna)))
             }
         }
     }

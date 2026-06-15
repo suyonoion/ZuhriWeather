@@ -2,8 +2,6 @@ package com.zf.zuhriweather
 
 import android.content.Context
 import android.appwidget.AppWidgetManager
-import androidx.work.*
-import java.util.concurrent.TimeUnit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -13,8 +11,7 @@ import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.updateAll
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Column
@@ -25,15 +22,15 @@ import androidx.glance.layout.padding
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 class ZuhriWidget : GlanceAppWidget() {
     
-        override suspend fun provideGlance(context: Context, id: GlanceId) {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            // EKSEKUSI ABSOLUT: 
-            // Matriks pembaca memori dipaksa masuk ke dalam proyektor visual (rekomposisi)
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
             
             val suhu = pref.getString("suhu", "-") ?: "-"
@@ -61,8 +58,6 @@ class ZuhriWidget : GlanceAppWidget() {
             }
         }
     }
-
-
 
     @Composable
     private fun MatriksVisualPublik(
@@ -97,74 +92,68 @@ class SegarkanMatriksAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         
-        // Fase 1: Pahat Status Memuat ke Penyimpanan Fisis (Aman dari Low-RAM Killer)
+        // 1. Eksekusi Instan: Tampilkan status memuat ke layar dalam 1 milidetik
         pref.edit().apply {
             putString("suhu", "Siklus...")
             putString("angin", "Koneksi...")
-            putString("lokasi", "Mengekstrak Litosfer...")
-            putString("skala", "-")
+            putString("lokasi", "Mengekstrak Satelit...")
             putString("status", "Proses")
             putString("warna", "Yellow")
             apply()
         }
         ZuhriWidget().update(context, glanceId)
 
-        // Fase 2: Pengeboran Jaringan Internasional menuju Hugging Face
-        try {
-            val respons = withContext(Dispatchers.IO) {
-                NetworkMatriks.api.getSinkronisasi()
-            }
-            
-            // Pahat Data Matang ke Penyimpanan Fisis
-            pref.edit().apply {
-                putString("suhu", respons.cuaca.suhu)
-                putString("angin", respons.cuaca.angin)
-                putString("lokasi", respons.bencana.lokasi)
-                putString("skala", respons.bencana.skala)
-                putString("status", respons.bencana.status_bahaya)
-                putString("warna", respons.bencana.kode_warna)
-                apply()
-            }
-            
-        } catch (e: java.net.UnknownHostException) {
-            pref.edit().apply {
-                putString("angin", "Ruptur Sinyal")
-                putString("lokasi", "Gerbang Jaringan Putus")
-                putString("status", "Offline")
-                putString("warna", "Red")
-                apply()
-            }
-        } catch (e: java.net.SocketTimeoutException) {
-            pref.edit().apply {
-                putString("angin", "Peladen Bangun")
-                putString("lokasi", "Klik [PERBARUI DATA] Sekali Lagi")
-                putString("status", "Timeout")
-                putString("warna", "Orange")
-                apply()
-            }
-        } catch (e: Exception) {
-            pref.edit().apply {
-                putString("angin", "Distorsi")
-                putString("lokasi", "Kegagalan Fisis")
-                putString("status", "Error")
-                putString("warna", "Red")
-                apply()
+        // 2. Dekopling Radikal: Melepaskan peluru kendali Coroutine secara mandiri tanpa memblokir Android
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val respons = NetworkMatriks.api.getSinkronisasi()
+                
+                pref.edit().apply {
+                    putString("suhu", respons.cuaca.suhu)
+                    putString("angin", respons.cuaca.angin)
+                    putString("lokasi", respons.bencana.lokasi)
+                    putString("skala", respons.bencana.skala)
+                    putString("status", respons.bencana.status_bahaya)
+                    putString("warna", respons.bencana.kode_warna)
+                    apply()
+                }
+            } catch (e: java.net.UnknownHostException) {
+                pref.edit().apply {
+                    putString("angin", "No Sinyal")
+                    putString("lokasi", "Gerbang Jaringan Putus")
+                    putString("status", "Offline")
+                    putString("warna", "Red")
+                    apply()
+                }
+            } catch (e: java.net.SocketTimeoutException) {
+                pref.edit().apply {
+                    putString("angin", "Timeout")
+                    putString("lokasi", "Klik [PERBARUI DATA] Sekali Lagi")
+                    putString("status", "Re-try")
+                    putString("warna", "Orange")
+                    apply()
+                }
+            } catch (e: Exception) {
+                pref.edit().apply {
+                    putString("angin", "Distorsi")
+                    putString("lokasi", "Kegagalan Fisis")
+                    putString("status", "Error")
+                    putString("warna", "Red")
+                    apply()
+                }
+            } finally {
+                // Memaksa seluruh proyektor visual di layar utama bergetar memperbarui diri
+                ZuhriWidget().updateAll(context)
             }
         }
-
-        // Fase 3: Rekonstruksi Visual Akhir secara Instan dari SharedPreferences
-        ZuhriWidget().update(context, glanceId)
     }
 }
 
 class ZuhriWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = ZuhriWidget()
 
-    // Eksekusi Absolut saat Widget diaktifkan di layar
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        
-        // Mengunci siklus pembaruan otonom setiap 15 Menit
         val siklusOtomatis = PeriodicWorkRequestBuilder<ZuhriWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "ZF_Sinkronisasi_Satelit",
@@ -173,18 +162,30 @@ class ZuhriWidgetReceiver : GlanceAppWidgetReceiver() {
         )
     }
 
-    // Eksekusi Pemuatan Instan saat Widget diletakkan secara fisis
+    // Mengatasi keterlambatan pemasangan pertama (Instan saat widget ditempel)
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         
-        val inisiasiAwal = OneTimeWorkRequestBuilder<ZuhriWorker>().build()
-        WorkManager.getInstance(context).enqueue(inisiasiAwal)
+        val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val respons = NetworkMatriks.api.getSinkronisasi()
+                pref.edit().apply {
+                    putString("suhu", respons.cuaca.suhu)
+                    putString("angin", respons.cuaca.angin)
+                    putString("lokasi", respons.bencana.lokasi)
+                    putString("skala", respons.bencana.skala)
+                    putString("status", respons.bencana.status_bahaya)
+                    putString("warna", respons.bencana.kode_warna)
+                    apply()
+                }
+                ZuhriWidget().updateAll(context)
+            } catch (e: Exception) {}
+        }
     }
 
-    // Pembersihan Residu saat Widget dihapus dari layar
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         WorkManager.getInstance(context).cancelUniqueWork("ZF_Sinkronisasi_Satelit")
     }
 }
-

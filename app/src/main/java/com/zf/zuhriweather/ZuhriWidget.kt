@@ -30,26 +30,27 @@ import kotlinx.coroutines.withContext
 
 class ZuhriWidget : GlanceAppWidget() {
     
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Mengambil paksa matriks data dari penyimpanan internal fisis (SharedPreferences)
-        val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-        
-        val suhu = pref.getString("suhu", "-") ?: "-"
-        val angin = pref.getString("angin", "-") ?: "-"
-        val lokasi = pref.getString("lokasi", "Menunggu Transmisi...") ?: "Menunggu Transmisi..."
-        val skala = pref.getString("skala", "-") ?: "-"
-        val status = pref.getString("status", "Standby") ?: "Standby"
-        val kodeWarna = pref.getString("warna", "Gray") ?: "Gray"
-        
-        val warnaStatus = when(kodeWarna) {
-            "Red" -> ColorProvider(Color.Red)
-            "Orange" -> ColorProvider(Color(0xFFFFA500))
-            "Yellow" -> ColorProvider(Color.Yellow)
-            "Green" -> ColorProvider(Color.Green)
-            else -> ColorProvider(Color.Gray)
-        }
-
+        override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
+            // EKSEKUSI ABSOLUT: 
+            // Matriks pembaca memori dipaksa masuk ke dalam proyektor visual (rekomposisi)
+            val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
+            
+            val suhu = pref.getString("suhu", "-") ?: "-"
+            val angin = pref.getString("angin", "-") ?: "-"
+            val lokasi = pref.getString("lokasi", "Menunggu Transmisi...") ?: "Menunggu Transmisi..."
+            val skala = pref.getString("skala", "-") ?: "-"
+            val status = pref.getString("status", "Standby") ?: "Standby"
+            val kodeWarna = pref.getString("warna", "Gray") ?: "Gray"
+            
+            val warnaStatus = when(kodeWarna) {
+                "Red" -> ColorProvider(Color.Red)
+                "Orange" -> ColorProvider(Color(0xFFFFA500))
+                "Yellow" -> ColorProvider(Color.Yellow)
+                "Green" -> ColorProvider(Color.Green)
+                else -> ColorProvider(Color.Gray)
+            }
+
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
@@ -60,6 +61,8 @@ class ZuhriWidget : GlanceAppWidget() {
             }
         }
     }
+
+
 
     @Composable
     private fun MatriksVisualPublik(

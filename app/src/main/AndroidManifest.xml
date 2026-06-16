@@ -6,7 +6,9 @@
         android:label="ZuhriWeather"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault">
-        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
         <receiver
             android:name=".ZuhriWidgetReceiver"
             android:exported="true">

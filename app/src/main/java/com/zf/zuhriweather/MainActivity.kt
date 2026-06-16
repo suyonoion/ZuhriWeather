@@ -31,24 +31,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Eksekusi Pengeboran Jaringan Instan saat aplikasi pertama dibuka
         segarkanMatriksFisis(this)
 
         setContent {
-            // Injeksi Context Android ke dalam ruang hampa Compose
             val context = LocalContext.current
             
-            // INJEKSI SIKLUS REAL-TIME LATAR DEPAN (60 DETIK)
-            // Memonopoli jaringan selama layar ini terbuka
+            // Perulangan Absolut 60 Detik
             LaunchedEffect(Unit) {
                 while(true) {
-                    delay(60000) // Waktu tunggu absolut 60 detik
+                    delay(60000)
                     segarkanMatriksFisis(context)
                 }
             }
@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
             var skala by remember { mutableStateOf("-") }
             var status by remember { mutableStateOf("Standby") }
             var warnaCode by remember { mutableStateOf("Gray") }
+            var waktuSinkron by remember { mutableStateOf("-") } // Matriks Waktu
 
             LaunchedEffect(Unit) {
                 val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
                 skala = pref.getString("skala", "-") ?: "-"
                 status = pref.getString("status", "Standby") ?: "Standby"
                 warnaCode = pref.getString("warna", "Gray") ?: "Gray"
+                waktuSinkron = pref.getString("waktu_sinkron", "-") ?: "-"
                 
                 val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
                     when (key) {
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
                         "skala" -> skala = p.getString("skala", "-") ?: "-"
                         "status" -> status = p.getString("status", "Standby") ?: "Standby"
                         "warna" -> warnaCode = p.getString("warna", "Gray") ?: "Gray"
+                        "waktu_sinkron" -> waktuSinkron = p.getString("waktu_sinkron", "-") ?: "-"
                     }
                 }
                 pref.registerOnSharedPreferenceChangeListener(listener)
@@ -133,6 +136,10 @@ class MainActivity : ComponentActivity() {
                         }
                         .padding(8.dp)
                 )
+
+                // Indikator Fisis Pergerakan Mesin
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Kontak Satelit Terakhir: $waktuSinkron WIB", color = Color.DarkGray, fontSize = 12.sp)
             }
         }
     }
@@ -142,6 +149,10 @@ class MainActivity : ComponentActivity() {
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
             try {
                 val respons = NetworkMatriks.api.getSinkronisasi()
+                
+                // Menangkap presisi waktu saat data berhasil ditarik
+                val waktuSekarang = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+
                 val editor = pref.edit()
                 editor.putString("suhu", respons.cuaca.suhu)
                 editor.putString("angin", respons.cuaca.angin)
@@ -149,6 +160,7 @@ class MainActivity : ComponentActivity() {
                 editor.putString("skala", respons.bencana.skala)
                 editor.putString("status", respons.bencana.status_bahaya)
                 editor.putString("warna", respons.bencana.kode_warna)
+                editor.putString("waktu_sinkron", waktuSekarang) // Memahat jam
                 editor.apply()
                 
                 ZuhriWidget().updateAll(context)

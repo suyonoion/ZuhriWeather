@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,13 +37,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Eksekusi Pengeboran Jaringan Instan
+        // Eksekusi Pengeboran Jaringan Instan saat aplikasi pertama dibuka
         segarkanMatriksFisis(this)
 
         setContent {
             // Injeksi Context Android ke dalam ruang hampa Compose
             val context = LocalContext.current
             
+            // INJEKSI SIKLUS REAL-TIME LATAR DEPAN (60 DETIK)
+            // Memonopoli jaringan selama layar ini terbuka
+            LaunchedEffect(Unit) {
+                while(true) {
+                    delay(60000) // Waktu tunggu absolut 60 detik
+                    segarkanMatriksFisis(context)
+                }
+            }
+
             var suhu by remember { mutableStateOf("-") }
             var angin by remember { mutableStateOf("-") }
             var lokasi by remember { mutableStateOf("Menunggu Transmisi...") }
@@ -110,7 +120,6 @@ class MainActivity : ComponentActivity() {
                     fontSize = 14.sp,
                     modifier = Modifier
                         .clickable {
-                            // Eksekusi fisis dengan Context yang diekstrak sebelumnya
                             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
                             val editor = pref.edit()
                             editor.putString("suhu", "Siklus...")
@@ -129,7 +138,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun segarkanMatriksFisis(context: Context) {
-        // Eksekusi mandiri tanpa ketergantungan pada ekstensi siklus hidup (lifecycle)
         CoroutineScope(Dispatchers.IO).launch {
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
             try {

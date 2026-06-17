@@ -10,8 +10,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Divider
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +38,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+// --- STRUKTUR DATA KERAPATAN TINGGI ZF ---
+data class MatriksAnomali(
+    val negara: String,
+    val entitas: String,
+    val jenis: String,
+    val probabilitas: String,
+    val skala: String,
+    val bahaya: String,
+    val waktu: String,
+    val warna: Color
+)
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // State Data Fisis
+            // State Data Latar Depan
             var suhu by remember { mutableStateOf("-") }
             var angin by remember { mutableStateOf("-") }
             var lokasi by remember { mutableStateOf("Menunggu Transmisi...") }
@@ -56,6 +73,10 @@ class MainActivity : ComponentActivity() {
             var status by remember { mutableStateOf("Standby") }
             var warnaCode by remember { mutableStateOf("Gray") }
             var waktuSinkron by remember { mutableStateOf("-") }
+
+            // Navigasi Tab
+            var tabIndex by remember { mutableStateOf(0) }
+            val tabTitles = listOf("LOKAL", "DOMESTIK", "GLOBAL")
 
             LaunchedEffect(Unit) {
                 val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
@@ -89,99 +110,111 @@ class MainActivity : ComponentActivity() {
                 else -> Color.Gray
             }
 
-            // ARSITEKTUR UX/UI: SCROLLABLE MATRIX
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0xFF0A0A0A))
-                    .padding(16.dp)
             ) {
-                // HEADER
-                item {
-                    Text(text = "ZF SPATIAL MONITOR", color = Color.Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text(text = "Koordinat Absolut: Kendal, Jawa Tengah", color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(24.dp))
+                // HEADER ABSOLUT
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "ZF SPATIAL MONITOR", color = Color.Cyan, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Pusat Kendali: Kendal, Jawa Tengah", color = Color.Gray, fontSize = 12.sp)
                 }
 
-                // 1. MATRIKS LOKAL (PRIORITAS TERTINGGI / ALARM)
-                item {
-                    SectionHeader("ANOMALI SPASIAL LOKAL (RADIUS EVAKUASI)", Color.Red)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(1.dp, warnaStatus, RoundedCornerShape(8.dp))
-                            .padding(16.dp)
-                    ) {
-                        Column {
-                            Text(text = status, color = warnaStatus, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Pusat Ruptur: $lokasi", color = Color.White, fontSize = 14.sp)
-                            Text(text = "Magnitudo Fisis: $skala", color = Color.LightGray, fontSize = 14.sp)
+                // TABULASI NAVIGASI
+                TabRow(
+                    selectedTabIndex = tabIndex,
+                    containerColor = Color(0xFF121212),
+                    contentColor = Color.Cyan,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
+                            color = Color.Cyan
+                        )
+                    }
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = tabIndex == index,
+                            onClick = { tabIndex = index },
+                            text = { Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        )
+                    }
+                }
+
+                // KONTEN BERDASARKAN TAB
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    when (tabIndex) {
+                        0 -> { // TAB 0: LOKAL (ALARM & CUACA)
+                            item {
+                                SectionHeader("TERMODINAMIKA LOKAL (KENDAL)", Color(0xFF00BFFF))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    DataCard("Suhu Aktif", suhu, modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    DataCard("Vektor Angin", angin, modifier = Modifier.weight(1f))
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                SectionHeader("STATUS LITOSFER LOKAL (RADAR EVAKUASI)", Color.Red)
+                                KartuAnomali(
+                                    data = MatriksAnomali(
+                                        negara = "Pusat Pelacakan Saat Ini",
+                                        entitas = lokasi,
+                                        jenis = "Pemindaian Tektonik",
+                                        probabilitas = "Real-Time",
+                                        skala = skala,
+                                        bahaya = status,
+                                        waktu = "Terakhir: $waktuSinkron WIB",
+                                        warna = warnaStatus
+                                    )
+                                )
+                            }
+                        }
+                        1 -> { // TAB 1: DOMESTIK INDONESIA
+                            item { SectionHeader("RUPTUR TERITORIAL (INDONESIA)", Color.Yellow) }
+                            items(DataSimulasi.domestik) { anomali ->
+                                KartuAnomali(data = anomali)
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                        2 -> { // TAB 2: GLOBAL ZONA MERAH/ORANYE
+                            item { SectionHeader("MATRIKS DESTRUKTIF GLOBAL (MAG ≥ 5.0)", Color.Red) }
+                            items(DataSimulasi.global) { anomali ->
+                                KartuAnomali(data = anomali)
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
 
-                // 2. MATRIKS ATMOSFER (CUACA PROFESIONAL)
-                item {
-                    SectionHeader("TERMODINAMIKA LOKAL", Color(0xFF00BFFF))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        DataCard("Suhu Lingkungan", suhu, modifier = Modifier.weight(1f))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        DataCard("Vektor Kinetik Angin", angin, modifier = Modifier.weight(1f))
+                    // FOOTER: SINKRONISASI
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Divider(color = Color.DarkGray, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "[ ↻ PAKSA SINKRONISASI SATELIT ]",
+                            color = Color.Green,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { segarkanMatriksFisis(context) }
+                                .padding(vertical = 12.dp),
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Detak Komputasi Akhir: $waktuSinkron WIB",
+                            color = Color.DarkGray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // 3. MATRIKS DOMESTIK INDONESIA
-                item {
-                    SectionHeader("LITOSFER INDONESIA (SEMUA ZONA)", Color.Yellow)
-                    // Placeholder Tabel UX (Menunggu pasokan Array dari main.py)
-                    TabelBencana(listOf(
-                        DataBaris("Maluku", "Gempa", "5.2 SR", "WASPADA"),
-                        DataBaris("Papua", "Gempa", "4.1 SR", "AMAN")
-                    ))
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // 4. MATRIKS GLOBAL (ZONA MERAH)
-                item {
-                    SectionHeader("GLOBAL RUPTUR: ZONA MERAH (MAG ≥ 6.0)", Color.Red)
-                    TabelBencana(listOf(
-                        DataBaris("Filipina", "Gempa", "7.2 SR", "AWAS"),
-                        DataBaris("Jepang", "Gempa", "6.5 SR", "AWAS")
-                    ), warnaTabel = Color(0x33FF0000))
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // FOOTER: SINKRONISASI
-                item {
-                    Divider(color = Color.DarkGray, thickness = 1.dp)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "[ ↻ PAKSA SINKRONISASI SATELIT ]",
-                        color = Color.Green,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { segarkanMatriksFisis(context) }
-                            .padding(vertical = 12.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "Kontak Satelit Terakhir: $waktuSinkron WIB",
-                        color = Color.DarkGray,
-                        fontSize = 12.sp,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -205,22 +238,22 @@ class MainActivity : ComponentActivity() {
                 }
                 ZuhriWidget().updateAll(context)
             } catch (e: Exception) {
-                // Penanganan Ruptur
+                // Biarkan handler visual mengurus ruptur jaringan
             }
         }
     }
 }
 
-// ================= KOMPONEN UX / UI ================= //
+// ================= KOMPONEN UX / UI KLINIS ================= //
 
 @Composable
 fun SectionHeader(judul: String, warna: Color) {
     Text(
         text = judul,
         color = warna,
-        fontSize = 14.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 8.dp)
+        modifier = Modifier.padding(bottom = 12.dp)
     )
 }
 
@@ -228,41 +261,67 @@ fun SectionHeader(judul: String, warna: Color) {
 fun DataCard(label: String, nilai: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(Color(0xFF1A1A1A))
+            .border(1.dp, Color(0xFF333333), RoundedCornerShape(6.dp))
             .padding(16.dp)
     ) {
-        Text(text = label, color = Color.Gray, fontSize = 12.sp)
+        Text(text = label, color = Color.Gray, fontSize = 11.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = nilai, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(text = nilai, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
-data class DataBaris(val lokasi: String, val jenis: String, val skala: String, val bahaya: String)
-
+// Kartu Resolusi Tinggi Pengganti Tabel Kaku
 @Composable
-fun TabelBencana(data: List<DataBaris>, warnaTabel: Color = Color(0xFF1A1A1A)) {
+fun KartuAnomali(data: MatriksAnomali) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(warnaTabel)
-            .border(0.5.dp, Color.DarkGray, RoundedCornerShape(8.dp))
+            .background(Color(0xFF151515))
+            .border(1.dp, data.warna.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .padding(16.dp)
     ) {
-        // Header Tabel
-        Row(modifier = Modifier.background(Color(0xFF2A2A2A)).padding(8.dp)) {
-            Text("Wilayah", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.weight(2f))
-            Text("Skala", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.weight(1f))
-            Text("Bahaya", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.weight(1.5f))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(text = data.negara.uppercase(), color = data.warna, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(text = data.waktu, color = Color.Gray, fontSize = 10.sp)
         }
-        // Isi Tabel
-        data.forEach { baris ->
-            Divider(color = Color.DarkGray, thickness = 0.5.dp)
-            Row(modifier = Modifier.padding(8.dp)) {
-                Text(baris.lokasi, color = Color.White, fontSize = 12.sp, modifier = Modifier.weight(2f))
-                Text(baris.skala, color = Color.White, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text(baris.bahaya, color = Color.White, fontSize = 12.sp, modifier = Modifier.weight(1.5f))
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(text = data.entitas, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Jenis Anomali", color = Color.DarkGray, fontSize = 10.sp)
+                Text(text = data.jenis, color = Color.LightGray, fontSize = 12.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Skala Fisis", color = Color.DarkGray, fontSize = 10.sp)
+                Text(text = data.skala, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Probabilitas", color = Color.DarkGray, fontSize = 10.sp)
+                Text(text = data.probabilitas, color = Color.LightGray, fontSize = 12.sp)
             }
         }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        Divider(color = Color(0xFF2A2A2A), thickness = 1.dp)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(text = "Status: ${data.bahaya}", color = data.warna, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+// Data Proyektor (Blueprint) menunggu suplai HF
+object DataSimulasi {
+    val global = listOf(
+        MatriksAnomali("Filipina", "Mindanao (Sesar Cotabato)", "Gempa Tektonik", "100% (Faktual)", "7.8 SR", "[AWAS] Keruntuhan Fatal", "17 Jun 2026, 08:12 WIB", Color.Red),
+        MatriksAnomali("Jepang", "Ibaraki (Area Tokyo)", "Gempa Tektonik", "100% (Faktual)", "5.5 SR", "[SIAGA] Guncangan Signifikan", "17 Jun 2026, 06:45 WIB", Color(0xFFFFA500))
+    )
+    val domestik = listOf(
+        MatriksAnomali("Indonesia", "Gunung Lewotobi, NTT", "Erupsi Vulkanik", "100% (Faktual)", "Level III", "[SIAGA] Interupsi Aviasi", "17 Jun 2026, 09:10 WIB", Color(0xFFFFA500)),
+        MatriksAnomali("Indonesia", "Selatan Jawa, DIY", "Gempa Tektonik", "100% (Faktual)", "4.2 SR", "[WASPADA] Aktivitas Minor", "16 Jun 2026, 23:14 WIB", Color.Yellow)
+    )
 }

@@ -62,8 +62,8 @@ class ZuhriWidget : GlanceAppWidget() {
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .background(ColorProvider(Color(0xFF0A0A0A)))
-                    .padding(12.dp)
+                    .background(ColorProvider(Color.Transparent)) // IMPLEMENTASI TRANSPARANSI TOTAL KELAS BERANDA
+                    .padding(8.dp)
             ) {
                 MatriksVisualPublik(suhu, angin, kelembapan, awan, presipitasi, metaLokasi, lokasi, skala, status, warnaStatus)
             }
@@ -76,45 +76,46 @@ class ZuhriWidget : GlanceAppWidget() {
         metaLokasi: String, lokasi: String, skala: String, status: String, warna: ColorProvider
     ) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            // HEADER BAR: NAMA LOKASI DINAMIS & TOMBOL REFRESH
-            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            
+            // HEADER PANEL SELEKTIF (Semi-Transparan Gelap 80%)
+            Row(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xCC0A0A0A))).padding(8.dp), verticalAlignment = Alignment.Vertical.CenterVertically) {
                 Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(text = "ZF SPATIAL MONITOR", style = TextStyle(color = ColorProvider(Color.Cyan), fontWeight = FontWeight.Bold, fontSize = 12.sp))
+                    Text(text = "ZF SPATIAL MONITOR", style = TextStyle(color = ColorProvider(Color.Cyan), fontWeight = FontWeight.Bold, fontSize = 11.sp))
                     Text(text = metaLokasi, style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 10.sp))
                 }
                 Text(
                     text = "[ ↻ ]",
                     modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
-                    style = TextStyle(color = ColorProvider(Color.Green), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    style = TextStyle(color = ColorProvider(Color.Green), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 )
             }
 
-            Spacer(modifier = GlanceModifier.padding(6.dp))
+            Spacer(modifier = GlanceModifier.padding(3.dp))
 
-            // GRID TERMODINAMIKA (5 PARAMETER KLINIS)
-            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xFF151515))).padding(8.dp)) {
+            // PANEL CUACA (Semi-Transparan Gelap 80%)
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xCC151515))).padding(8.dp)) {
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text("🌡️ $suhu", style = TextStyle(color = ColorProvider(Color.White), fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
-                    Text("💨 $angin", style = TextStyle(color = ColorProvider(Color.White), fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                    Text("🌡️ $suhu", style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                    Text("💨 $angin", style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
                 }
                 Spacer(modifier = GlanceModifier.padding(2.dp))
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text("🌧️ $presipitasi", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
-                    Text("☁️ $awan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
-                    Text("💧 $kelembapan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("🌧️ $presipitasi", style = TextStyle(color = ColorProvider(Color.White), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("☁️ $awan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("💧 $kelembapan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
                 }
             }
 
-            Spacer(modifier = GlanceModifier.padding(6.dp))
+            Spacer(modifier = GlanceModifier.padding(3.dp))
 
-            // RADAR BENCANA LOKAL
-            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xFF151515))).padding(8.dp)) {
-                Text(text = "RADAR LITOSFER LOKAL", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 10.sp, fontWeight = FontWeight.Bold))
+            // PANEL RADAR GEMPA (Semi-Transparan Gelap 80%)
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xCC151515))).padding(8.dp)) {
+                Text(text = "TITIK PANTAU GEMPA", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 9.sp, fontWeight = FontWeight.Bold))
                 Spacer(modifier = GlanceModifier.padding(2.dp))
-                Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold))
+                Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp, fontWeight = FontWeight.Bold))
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(text = "Skala: $skala | ", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 10.sp))
-                    Text(text = status, style = TextStyle(color = warna, fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                    Text(text = "Mag: $skala | ", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 9.sp))
+                    Text(text = status, style = TextStyle(color = warna, fontSize = 9.sp, fontWeight = FontWeight.Bold))
                 }
             }
         }
@@ -125,7 +126,6 @@ class SegarkanMatriksAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         
-        // 1. Eksekusi Instan: Indikator Pemuatan
         pref.edit().apply {
             putString("suhu", "Siklus...")
             putString("angin", "Koneksi...")
@@ -139,7 +139,6 @@ class SegarkanMatriksAction : ActionCallback {
         }
         ZuhriWidget().update(context, glanceId)
 
-        // 2. Dekopling Radikal: Ekstraksi Data Fisis Penuh
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             try {
                 val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
@@ -162,7 +161,6 @@ class SegarkanMatriksAction : ActionCallback {
                     apply()
                 }
             } catch (e: Exception) {
-                // Biarkan data lama tertimpa jika gagal
             } finally {
                 ZuhriWidget().updateAll(context)
             }

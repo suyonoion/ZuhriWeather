@@ -60,7 +60,6 @@ class MainActivity : ComponentActivity() {
             val pref = remember { context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE) }
             val gson = remember { Gson() }
 
-            // METRONOM REAL-TIME (1 DETIK)
             var waktuRealTime by remember { mutableStateOf("- | -") }
             LaunchedEffect(Unit) {
                 val formatter = SimpleDateFormat("EEEE, dd MMMM yyyy | HH:mm:ss", Locale("id", "ID"))
@@ -267,14 +266,14 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
-    // TRANSLASI TEKS PERINGATAN RADAR
     private fun eksekusiPindaiSatelit(context: Context, mode: String, hasKicked: Boolean, updateKickState: (Boolean) -> Unit) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         var targetLat = pref.getFloat("last_lat", -6.9535f).toDouble()
         var targetLon = pref.getFloat("last_lon", 110.2312f).toDouble()
 
-        val namaLama = pref.getString("meta_lokasi", "Blorok, Brangsong, Kab. Kendal") ?: "Blorok, Brangsong, Kab. Kendal"
-        val namaBersih = namaLama.split(" (")[0]
+        // MEMBACA DARI BRANKAS LOKASI RUMAH TERKUNCI (BUKAN DARI META_LOKASI YANG VOLATIL)
+        val lastUserLokasi = pref.getString("last_user_lokasi", "Blorok, Brangsong, Kab. Kendal") ?: "Blorok, Brangsong, Kab. Kendal"
+        val namaBersih = lastUserLokasi.split(" (")[0]
 
         when (mode) {
             "SAUNG" -> tembakJaringanFisis(context, -7.0500, 110.3000, "Saung JAWA, Kendal", false)
@@ -358,6 +357,12 @@ class MainActivity : ComponentActivity() {
                     putString("presipitasi", respons.cuaca.presipitasi)
                     
                     putString("meta_lokasi", respons.meta_lokasi)
+                    
+                    // JIKA DATA DIHASILKAN OLEH GPS RADAR AKTIF, KUNCI PERMANEN KE BRANKAS PENGGUNA TERAKHIR
+                    if (perluGeocode) {
+                        putString("last_user_lokasi", respons.meta_lokasi)
+                    }
+                    
                     putString("lokasi", respons.bencana.lokasi)
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)

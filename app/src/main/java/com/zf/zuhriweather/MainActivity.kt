@@ -388,9 +388,9 @@ fun KartuProyeksiJam(jam: ProyeksiJam) {
     
     // SELEKTOR IKONOGRAFI DINAMIS BERDASARKAN PARAMETER PRESIPITASI
     val (ikon, warnaIkon) = when {
-        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF)  # Presipitasi Mayor (Deras)
-        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500)  # Presipitasi Ringan / Bersela
-        else -> "☀️" to Color.Yellow                   # Foton Bebas (Cerah)
+        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF) // Presipitasi Mayor (Deras)
+        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500) // Presipitasi Ringan / Bersela
+        else -> "☀️" to Color.Yellow                   // Foton Bebas (Cerah)
     }
 
     Column(

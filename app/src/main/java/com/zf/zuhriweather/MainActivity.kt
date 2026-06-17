@@ -75,7 +75,6 @@ class MainActivity : ComponentActivity() {
             
             var hasKickedToSettings by remember { mutableStateOf(false) }
 
-            // LAUNCHER OTORISASI GPS
             val requestPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions()
             ) { perms ->
@@ -84,14 +83,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // AUTO-TRIGGER AWAL
             LaunchedEffect(Unit) {
                 if (modeSpasial == "RADAR" && !cekIzinLokasi(context)) {
                     requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 }
             }
 
-            // SIKLUS SINKRONISASI BERKALA
             LaunchedEffect(modeSpasial) {
                 while(true) {
                     eksekusiPindaiSatelit(context, modeSpasial, true) { state -> hasKickedToSettings = state }
@@ -99,7 +96,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // RE-RENDER KETIKA DATA STORAGE BERUBAH
             var triggerRender by remember { mutableStateOf(0) }
             val listener = remember {
                 android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -111,7 +107,6 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(Unit) { pref.registerOnSharedPreferenceChangeListener(listener) }
 
-            // BACA STATE MEMORI FISIS
             val suhu = pref.getString("suhu", "-") ?: "-"
             val angin = pref.getString("angin", "-") ?: "-"
             val kelembapan = pref.getString("kelembapan", "-") ?: "-"
@@ -205,28 +200,28 @@ class MainActivity : ComponentActivity() {
                     when (tabIndex) {
                         0 -> { 
                             item {
-                                SectionHeader("STATUS LITOSFER SEKITAR", Color.Red, "Data: $waktuSinkron WIB")
+                                SectionHeader("STATUS GEMPA LOKAL", Color.Red, "Data: $waktuSinkron WIB")
                                 KartuLokalStatus(lokasi, skala, status, warnaStatus)
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                SectionHeader("TERMODINAMIKA ATMOSFER (NOWCAST)", Color(0xFF00BFFF), "Target: $namaLokasiDinamis")
+                                SectionHeader("KONDISI CUACA SAAT INI", Color(0xFF00BFFF), "Target: $namaLokasiDinamis")
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    DataCard("Suhu Aktif", suhu, "🌡️", Modifier.weight(1f))
+                                    DataCard("Suhu", suhu, "🌡️", Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
-                                    DataCard("Vektor Angin", angin, "💨", Modifier.weight(1f))
+                                    DataCard("Kec. Angin", angin, "💨", Modifier.weight(1f))
                                 }
                                 Spacer(Modifier.height(8.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    DataCard("Presipitasi", presipitasi, "🌧️", Modifier.weight(1f))
+                                    DataCard("Curah Hujan", presipitasi, "🌧️", Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
-                                    DataCard("Tutupan Foton", awan, "☁️", Modifier.weight(1f))
+                                    DataCard("Awan", awan, "☁️", Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
-                                    DataCard("Kerapatan (RH)", kelembapan, "💧", Modifier.weight(1f))
+                                    DataCard("Kelembapan", kelembapan, "💧", Modifier.weight(1f))
                                 }
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 if (listJam.isNotEmpty()) {
-                                    SectionHeader("PROYEKSI METEOROLOGI PER-JAM", Color.Yellow)
+                                    SectionHeader("PRAKIRAAN CUACA PER-JAM", Color.Yellow)
                                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         items(listJam) { jam -> KartuProyeksiJam(jam) }
                                     }
@@ -234,19 +229,19 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 if (listHari.isNotEmpty()) {
-                                    SectionHeader("PROYEKSI TEMPORAL HARIAN (3 HARI)", Color.Yellow)
+                                    SectionHeader("PRAKIRAAN CUACA HARIAN (3 HARI)", Color.Yellow)
                                     listHari.forEach { hari -> KartuProyeksiHari(hari) }
                                 }
                             }
                         }
                         1 -> { 
-                            item { SectionHeader("RUPTUR TERITORIAL (INDONESIA)", Color.Yellow) }
-                            if (listDomestik.isEmpty()) item { Text("Litosfer Domestik Stabil.", color = Color.Gray) }
+                            item { SectionHeader("GEMPA BUMI DOMESTIK (INDONESIA)", Color.Yellow) }
+                            if (listDomestik.isEmpty()) item { Text("Tidak ada gempa domestik signifikan.", color = Color.Gray) }
                             items(listDomestik) { anomali -> KartuAnomaliJaringan(anomali); Spacer(modifier = Modifier.height(12.dp)) }
                         }
                         2 -> { 
-                            item { SectionHeader("MATRIKS DESTRUKTIF GLOBAL (MAG ≥ 5.0)", Color.Red) }
-                            if (listGlobal.isEmpty()) item { Text("Litosfer Global Stabil.", color = Color.Gray) }
+                            item { SectionHeader("GEMPA BUMI GLOBAL (MAG ≥ 5.0)", Color.Red) }
+                            if (listGlobal.isEmpty()) item { Text("Tidak ada gempa global signifikan.", color = Color.Gray) }
                             items(listGlobal) { anomali -> KartuAnomaliJaringan(anomali); Spacer(modifier = Modifier.height(12.dp)) }
                         }
                     }
@@ -254,7 +249,7 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(24.dp))
                         Divider(color = Color.DarkGray, thickness = 1.dp)
                         Text(
-                            text = "[ ↻ PAKSA SINKRONISASI SATELIT ]",
+                            text = "[ ↻ PERBARUI DATA SATELIT ]",
                             color = Color.Green, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             modifier = Modifier.fillMaxWidth().clickable { 
                                 hasKickedToSettings = false
@@ -272,13 +267,12 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
-    // KALIBRASI LOGIKA: EKSTRAKSI IDENTITAS GEOGRAFIS SAAT RETENSI
+    // TRANSLASI TEKS PERINGATAN RADAR
     private fun eksekusiPindaiSatelit(context: Context, mode: String, hasKicked: Boolean, updateKickState: (Boolean) -> Unit) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         var targetLat = pref.getFloat("last_lat", -6.9535f).toDouble()
         var targetLon = pref.getFloat("last_lon", 110.2312f).toDouble()
 
-        // Ambil nama lokasi terakhir dari brankas, potong tag lama agar bersih
         val namaLama = pref.getString("meta_lokasi", "Blorok, Brangsong, Kab. Kendal") ?: "Blorok, Brangsong, Kab. Kendal"
         val namaBersih = namaLama.split(" (")[0]
 
@@ -293,12 +287,11 @@ class MainActivity : ComponentActivity() {
                     
                     if (!isGpsEnabled) {
                         if (!hasKicked) {
-                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Menunggu Aktivasi)", false)
+                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Menunggu Aktivasi GPS)", false)
                             context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                             updateKickState(true)
                         } else {
-                            // SEKARANG MENAMPILKAN LOKASI ASLI + STATUS RETENSI
-                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
+                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Memori Tersimpan)", false)
                         }
                         return
                     }
@@ -317,14 +310,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                     tembakJaringanFisis(context, targetLat, targetLon, "Mendeteksi Koordinat...", true)
                                 } else {
-                                    tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
+                                    tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Memori Tersimpan)", false)
                                 }
                             }
                             .addOnFailureListener {
-                                tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
+                                tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Memori Tersimpan)", false)
                             }
                     } catch (e: SecurityException) {
-                        tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Izin Diblokir)", false)
+                        tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Izin Lokasi Diblokir)", false)
                     }
                 } else {
                     tembakJaringanFisis(context, targetLat, targetLon, "Izin Lokasi Ditolak", false)
@@ -345,7 +338,7 @@ class MainActivity : ComponentActivity() {
                     val alamat = geocoder.getFromLocation(lat, lon, 1)
                     if (!alamat.isNullOrEmpty()) {
                         val detail = alamat[0]
-                        val desa = detail.locality ?: detail.subAdminArea ?: detail.thoroughfare ?: "Koordinat Fisis"
+                        val desa = detail.locality ?: detail.subAdminArea ?: detail.thoroughfare ?: "Koordinat Lokasi"
                         val kota = detail.adminArea ?: "Tidak Terdaftar"
                         namaFinal = "$desa, $kota"
                     }
@@ -383,7 +376,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ================= KOMPONEN UX / UI FISIS ================= //
+// ================= KOMPONEN UX / UI PUBLIK ================= //
 
 fun parseWarnaZf(kode: String): Color {
     return when(kode) { "Red" -> Color.Red; "Orange" -> Color(0xFFFFA500); "Yellow" -> Color.Yellow; "Green" -> Color.Green; else -> Color.Gray }
@@ -445,12 +438,12 @@ fun KartuProyeksiHari(hari: ProyeksiHari) {
 @Composable
 fun KartuLokalStatus(lokasi: String, skala: String, status: String, warna: Color) {
     Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF151515)).border(1.dp, warna.copy(alpha=0.5f)).padding(16.dp)) {
-        Text("PUSAT EVALUASI RADIUS GEODESIS", color = warna, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("TITIK PANTAU GEMPA", color = warna, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Text(lokasi, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text("Skala Fisis: $skala", color = Color.LightGray, fontSize = 13.sp)
+        Text("Magnitudo: $skala", color = Color.LightGray, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(12.dp))
-        Text("Status Ancaman: $status", color = warna, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("Status: $status", color = warna, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -466,8 +459,8 @@ fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork) {
         Text(data.entitas, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) { Text("Jenis", color = Color.DarkGray, fontSize = 10.sp); Text(data.jenis, color = Color.LightGray, fontSize = 12.sp) }
-            Column(modifier = Modifier.weight(1f)) { Text("Skala", color = Color.DarkGray, fontSize = 10.sp); Text(data.skala, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            Column(modifier = Modifier.weight(1f)) { Text("Kategori", color = Color.DarkGray, fontSize = 10.sp); Text(data.jenis, color = Color.LightGray, fontSize = 12.sp) }
+            Column(modifier = Modifier.weight(1f)) { Text("Magnitudo", color = Color.DarkGray, fontSize = 10.sp); Text(data.skala, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
         }
         Spacer(modifier = Modifier.height(12.dp))
         Divider(color = Color(0xFF2A2A2A), thickness = 1.dp)

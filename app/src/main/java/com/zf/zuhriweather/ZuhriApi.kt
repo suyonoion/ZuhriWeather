@@ -12,7 +12,8 @@ data class CuacaData(val suhu: String, val angin: String)
 data class BencanaData(val lokasi: String, val skala: String, val status_bahaya: String, val kode_warna: String)
 
 interface HfApi {
-    @GET("spasial/sinkronisasi")
+    // PEMOTONGAN LORONG FIKTIF: SINKRONISASI PRESISI DENGAN MAIN.PY
+    @GET("sinkronisasi")
     suspend fun getSinkronisasi(): HfResponse
 }
 
@@ -22,7 +23,6 @@ object NetworkMatriks {
         .connectTimeout(10, TimeUnit.SECONDS) // Deteksi fisis: Jika dalam 10 detik gerbang internet tidak ditemukan, langsung batalkan.
         .readTimeout(60, TimeUnit.SECONDS)    // Toleransi peladen: Jika internet ada, tunggu hingga 60 detik agar HF selesai kompilasi (Cold Start).
         .build()
-
 
     val api: HfApi by lazy {
         Retrofit.Builder()

@@ -19,10 +19,14 @@ class ZuhriWorker(private val appContext: Context, workerParams: WorkerParameter
     override suspend fun doWork(): Result {
         val pref = appContext.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         
-        return try {
-            val respons = withContext(Dispatchers.IO) {
-                NetworkMatriks.api.getSinkronisasi()
-            }
+        return try {val pref = applicationContext.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
+val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Worker)") ?: "Blorok, Kendal"
+
+val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
+
+            
             
             val lokasi = respons.bencana.lokasi
             val skala = respons.bencana.skala

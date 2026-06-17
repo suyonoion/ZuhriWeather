@@ -7,7 +7,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.setContent
+import androidx.activity.compose.setContent
+import android.content.SharedPreferences
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,13 +82,14 @@ class MainActivity : ComponentActivity() {
             // RE-RENDER TRIGGER KETIKA STORAGE BERUBAH
             var triggerRender by remember { mutableStateOf(0) }
             val listener = remember {
-                Context.getSharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "waktu_sinkron" || key == "meta_lokasi") {
                         namaLokasiDinamis = pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal"
                         triggerRender++
                     }
                 }
             }
+
             
             LaunchedEffect(Unit) {
                 pref.registerOnSharedPreferenceChangeListener(listener)

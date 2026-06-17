@@ -108,7 +108,12 @@ class SegarkanMatriksAction : ActionCallback {
         // 2. Dekopling Radikal: Melepaskan peluru kendali Coroutine secara mandiri tanpa memblokir Android
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             try {
-                val respons = NetworkMatriks.api.getSinkronisasi()
+                val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
+val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Widget)") ?: "Blorok, Kendal"
+
+val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
                 
                 pref.edit().apply {
                     putString("suhu", respons.cuaca.suhu)
@@ -171,7 +176,13 @@ class ZuhriWidgetReceiver : GlanceAppWidgetReceiver() {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             try {
-                val respons = NetworkMatriks.api.getSinkronisasi()
+               val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
+val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Widget)") ?: "Blorok, Kendal"
+
+val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
+
                 pref.edit().apply {
                     putString("suhu", respons.cuaca.suhu)
                     putString("angin", respons.cuaca.angin)

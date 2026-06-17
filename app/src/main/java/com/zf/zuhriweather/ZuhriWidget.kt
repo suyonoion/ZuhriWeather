@@ -110,7 +110,7 @@ class ZuhriWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(2.dp)) # KOMPRESI JARAK ANTAR PANEL
+            Spacer(modifier = GlanceModifier.height(2.dp)) // KOMPRESI JARAK ANTAR PANEL
 
             // PANEL 2: METEOROLOGI (TRANSPARANSI KOREKSI 60% = 0x99)
             Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(6.dp)) {
@@ -129,8 +129,7 @@ class ZuhriWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(2.dp)) # KOMPRESI JARAK ANTAR PANEL
-
+            Spacer(modifier = GlanceModifier.height(2.dp)) // KOMPRESI JARAK ANTAR PANEL
             // PANEL 3: LITOSFER (TRANSPARANSI KOREKSI 60% = 0x99)
             Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(6.dp)) {
                 Text(text = "TITIK PANTAU GEMPA", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 9.sp, fontWeight = FontWeight.Bold))

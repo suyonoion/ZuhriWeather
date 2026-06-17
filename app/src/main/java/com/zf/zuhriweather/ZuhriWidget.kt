@@ -77,7 +77,6 @@ class ZuhriWidget : GlanceAppWidget() {
         suhu: String, angin: String, kelembapan: String, awan: String, presipitasi: String,
         metaLokasi: String, lokasi: String, skala: String, status: String, warna: ColorProvider
     ) {
-        // EVALUASI LOGIKA INDIKATOR CUACA AKTIF (DEKODE NUMERIK)
         val angkaHujan = presipitasi.replace(" mm/j", "").replace("[Deras]", "").trim().toDoubleOrNull() ?: 0.0
         val angkaAwan = awan.replace("%", "").trim().toIntOrNull() ?: 0
         
@@ -89,58 +88,61 @@ class ZuhriWidget : GlanceAppWidget() {
         }
 
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            
-            // PANEL 1: HEADER (TRANSPARANSI KOREKSI 60% = 0x99)
+            // PANEL 1: HEADER (FONT DITINGKATKAN KE 13sp & 12sp)
             Row(
-                modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x990A0A0A))).padding(6.dp), 
+                modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x990A0A0A))).padding(8.dp), 
                 verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
                 Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(text = "ZF SPATIAL MONITOR", style = TextStyle(color = ColorProvider(Color.Cyan), fontWeight = FontWeight.Bold, fontSize = 11.sp))
-                    Text(text = metaLokasi, style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 10.sp))
+                    Text(text = "ZF SPATIAL MONITOR", style = TextStyle(color = ColorProvider(Color.Cyan), fontWeight = FontWeight.Bold, fontSize = 13.sp))
+                    Text(text = metaLokasi, style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 12.sp))
                 }
                 Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(text = "$ikonCuaca $teksCuaca", style = TextStyle(color = ColorProvider(Color.Yellow), fontWeight = FontWeight.Bold, fontSize = 10.sp))
+                    Text(text = "$ikonCuaca $teksCuaca", style = TextStyle(color = ColorProvider(Color.Yellow), fontWeight = FontWeight.Bold, fontSize = 12.sp))
                     Spacer(modifier = GlanceModifier.width(8.dp))
                     Text(
                         text = "[ ↻ ]",
                         modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
-                        style = TextStyle(color = ColorProvider(Color.Green), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        style = TextStyle(color = ColorProvider(Color.Green), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     )
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(2.dp)) // KOMPRESI JARAK ANTAR PANEL
+            Spacer(modifier = GlanceModifier.height(4.dp))
 
-            // PANEL 2: METEOROLOGI (TRANSPARANSI KOREKSI 60% = 0x99)
-            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(6.dp)) {
+            // PANEL 2: METEOROLOGI (FONT SUHU DITINGKATKAN KE 16sp, DATA KE 12sp)
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(8.dp)) {
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text("💡 Kondisi Saat Ini", style = TextStyle(color = ColorProvider(Color.Cyan), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("💡 Kondisi Saat Ini", style = TextStyle(color = ColorProvider(Color.Cyan), fontSize = 11.sp), modifier = GlanceModifier.defaultWeight())
                 }
+                Spacer(modifier = GlanceModifier.height(4.dp))
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text("🌡️ $suhu", style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
-                    Text("💨 $angin", style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                    Text("🌡️ $suhu", style = TextStyle(color = ColorProvider(Color.White), fontSize = 16.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                    Text("💨 $angin", style = TextStyle(color = ColorProvider(Color.White), fontSize = 16.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
                 }
-                Spacer(modifier = GlanceModifier.height(2.dp))
+                Spacer(modifier = GlanceModifier.height(4.dp))
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
-                    Text("🌧️ Air: $presipitasi", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
-                    Text("☁️ Awan: $awan", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
-                    Text("💧 RH: $kelembapan", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 9.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("🌧️ Air: $presipitasi", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("☁️ Awan: $awan", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("💧 RH: $kelembapan", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(2.dp)) // KOMPRESI JARAK ANTAR PANEL
-            // PANEL 3: LITOSFER (TRANSPARANSI KOREKSI 60% = 0x99)
-            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(6.dp)) {
-                Text(text = "TITIK PANTAU GEMPA", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 9.sp, fontWeight = FontWeight.Bold))
-                Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp, fontWeight = FontWeight.Bold))
+            Spacer(modifier = GlanceModifier.height(4.dp))
+
+            // PANEL 3: LITOSFER (FONT DITINGKATKAN KE 11sp, 13sp, 12sp)
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0x99151515))).padding(8.dp)) {
+                Text(text = "TITIK PANTAU GEMPA", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 11.sp, fontWeight = FontWeight.Bold))
+                Spacer(modifier = GlanceModifier.height(2.dp))
+                Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White), fontSize = 13.sp, fontWeight = FontWeight.Bold))
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(text = "Magnitudo: $skala | ", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 9.sp))
-                    Text(text = status, style = TextStyle(color = warna, fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                    Text(text = "Magnitudo: $skala | ", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 12.sp))
+                    Text(text = status, style = TextStyle(color = warna, fontSize = 12.sp, fontWeight = FontWeight.Bold))
                 }
             }
         }
     }
+
 }
 
 class SegarkanMatriksAction : ActionCallback {

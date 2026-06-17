@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Latar Belakang Hitam Absolut -->
+    <path android:fillColor="#0A0A0A" android:pathData="M0,0h108v108h-108z"/>
+    <!-- Geometri ZF Cyan -->
+    <path android:fillColor="#00FFFF" android:pathData="M 20 20 L 88 20 L 88 32 L 40 32 L 88 74 L 88 88 L 20 88 L 20 76 L 68 76 L 20 34 Z"/>
+    <path android:fillColor="#FF0000" android:pathData="M 88 88 L 88 96 L 20 96 L 20 88 Z"/>
+</vector>

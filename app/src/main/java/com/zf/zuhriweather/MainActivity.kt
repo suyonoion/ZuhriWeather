@@ -26,6 +26,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +75,8 @@ class MainActivity : ComponentActivity() {
             var namaLokasiDinamis by remember { mutableStateOf(pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal") }
             
             var hasKickedToSettings by remember { mutableStateOf(false) }
+            
+            var tampilDialogInfo by remember { mutableStateOf(false) }
 
             val requestPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -150,39 +154,54 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // --- AWAL BLOK HEADER DAN DIALOG ---
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val daftarMode = listOf("RADAR", "SAUNG", "KENDAL", "WELERI")
-                    daftarMode.forEach { mode ->
-                        val aktif = modeSpasial == mode
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (aktif) Color.Cyan else Color(0xFF1E1E1E))
-                                .clickable {
-                                    modeSpasial = mode
-                                    pref.edit().putString("opsi_mode", mode).apply()
-                                    if (mode == "RADAR") {
-                                        if (!cekIzinLokasi(context)) {
-                                            requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                                        } else {
-                                            hasKickedToSettings = false
-                                            eksekusiPindaiSatelit(context, mode, false) { state -> hasKickedToSettings = state }
-                                        }
-                                    } else {
-                                        eksekusiPindaiSatelit(context, mode, true) { state -> hasKickedToSettings = state }
-                                    }
-                                }
-                                .padding(vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(mode, color = if (aktif) Color.Black else Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("ZF SPATIAL", color = Color.Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // TOMBOL PROTOKOL INFORMASI
+                            Text("[ i ]", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { tampilDialogInfo = true })
+                        }
+                        Text(namaLokasiDinamis, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        val parts = waktuRealTime.split(" | ")
+                        if (parts.size == 2) {
+                            Text(parts[0].uppercase(), color = Color.Yellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("${parts[1]} WIB", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
+
+                if (tampilDialogInfo) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { tampilDialogInfo = false },
+                        containerColor = Color(0xFF1A1A1A),
+                        title = { Text("PROTOKOL IDENTITAS", color = Color.Cyan, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column {
+                                Text("ZUHRI SPATIAL MONITOR", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("Versi Absolut 1.0.0", color = Color.Gray, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("Arsitektur Inti: Zuhri Formalism", color = Color.Yellow, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Otoritas Lapangan: Mas Ion (Submawil Kendal)", color = Color.White, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Sistem ini mengekstrak data litosfer dan termodinamika secara mutlak tanpa rekayasa antarmuka.", color = Color.LightGray, fontSize = 11.sp)
+                            }
+                        },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = { tampilDialogInfo = false }) {
+                                Text("[ TUTUP ]", color = Color.Red, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    )
+                }
+                // --- AKHIR BLOK HEADER DAN DIALOG ---
                 
                 Spacer(modifier = Modifier.height(8.dp))
 

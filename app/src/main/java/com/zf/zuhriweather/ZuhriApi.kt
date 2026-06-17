@@ -4,10 +4,12 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
-// --- STRUKTUR PENAMPUNG MATRIKS RAKSASA ZF ---
+// --- STRUKTUR PENAMPUNG MATRIKS RAKSASA DYNAMIC ZF ---
 data class HfResponse(
+    val meta_lokasi: String, // Menangkap nama lokasi dinamis dari peladen
     val cuaca: CuacaData,
     val proyeksi_cuaca: ProyeksiCuacaData,
     val bencana: BencanaData,
@@ -29,12 +31,16 @@ data class MatriksAnomaliNetwork(
 
 interface HfApi {
     @GET("sinkronisasi")
-    suspend fun getSinkronisasi(): HfResponse
+    suspend fun getSinkronisasi(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("lokasi_nama") lokasiNama: String
+    ): HfResponse
 }
 
 object NetworkMatriks {
     private val klienToleransi = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 

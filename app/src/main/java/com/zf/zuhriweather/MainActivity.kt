@@ -20,13 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
             val pref = remember { context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE) }
             val gson = remember { Gson() }
 
+            // METRONOM REAL-TIME
             var waktuRealTime by remember { mutableStateOf("- | -") }
             LaunchedEffect(Unit) {
                 val formatter = SimpleDateFormat("EEEE, dd MMMM yyyy | HH:mm:ss", Locale("id", "ID"))
@@ -71,12 +72,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // STATE MANAJEMEN FISIS
             var modeSpasial by remember { mutableStateOf(pref.getString("opsi_mode", "RADAR") ?: "RADAR") }
             var namaLokasiDinamis by remember { mutableStateOf(pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal") }
-            
             var hasKickedToSettings by remember { mutableStateOf(false) }
-            
-            var tampilDialogInfo by remember { mutableStateOf(false) }
+            var tampilDialogInfo by remember { mutableStateOf(false) } // PEMICU DIALOG INFORMASI
 
             val requestPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
             }
             LaunchedEffect(Unit) { pref.registerOnSharedPreferenceChangeListener(listener) }
 
+            // EKSTRAKSI MEMORI LOKAL
             val suhu = pref.getString("suhu", "-") ?: "-"
             val angin = pref.getString("angin", "-") ?: "-"
             val kelembapan = pref.getString("kelembapan", "-") ?: "-"
@@ -134,27 +135,10 @@ class MainActivity : ComponentActivity() {
             var tabIndex by remember { mutableStateOf(0) }
             val tabTitles = listOf("LOKAL", "DOMESTIK", "GLOBAL")
 
+            // ARSITEKTUR ANTARMUKA UTAMA
             Column(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("ZF SPATIAL", color = Color.Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(namaLokasiDinamis, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        val parts = waktuRealTime.split(" | ")
-                        if (parts.size == 2) {
-                            Text(parts[0].uppercase(), color = Color.Yellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text("${parts[1]} WIB", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                // --- AWAL BLOK HEADER DAN DIALOG ---
+                // 1. BLOK HEADER ABSOLUT (Waktu, Judul, Info)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -164,7 +148,6 @@ class MainActivity : ComponentActivity() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("ZF SPATIAL", color = Color.Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(8.dp))
-                            // TOMBOL PROTOKOL INFORMASI
                             Text("[ i ]", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { tampilDialogInfo = true })
                         }
                         Text(namaLokasiDinamis, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
@@ -178,8 +161,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // 2. PROTOKOL DIALOG INFORMASI
                 if (tampilDialogInfo) {
-                    androidx.compose.material3.AlertDialog(
+                    AlertDialog(
                         onDismissRequest = { tampilDialogInfo = false },
                         containerColor = Color(0xFF1A1A1A),
                         title = { Text("PROTOKOL IDENTITAS", color = Color.Cyan, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
@@ -195,16 +179,51 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         confirmButton = {
-                            androidx.compose.material3.TextButton(onClick = { tampilDialogInfo = false }) {
+                            TextButton(onClick = { tampilDialogInfo = false }) {
                                 Text("[ TUTUP ]", color = Color.Red, fontWeight = FontWeight.Bold)
                             }
                         }
                     )
                 }
-                // --- AKHIR BLOK HEADER DAN DIALOG ---
+
+                // 3. BLOK SAKELAR LOKASI MANUAL (Baris Target Radar)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val daftarMode = listOf("RADAR", "SAUNG", "KENDAL", "WELERI")
+                    daftarMode.forEach { mode ->
+                        val aktif = modeSpasial == mode
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (aktif) Color.Cyan else Color(0xFF1E1E1E))
+                                .clickable {
+                                    modeSpasial = mode
+                                    pref.edit().putString("opsi_mode", mode).apply()
+                                    if (mode == "RADAR") {
+                                        if (!cekIzinLokasi(context)) {
+                                            requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                        } else {
+                                            hasKickedToSettings = false
+                                            eksekusiPindaiSatelit(context, mode, false) { state -> hasKickedToSettings = state }
+                                        }
+                                    } else {
+                                        eksekusiPindaiSatelit(context, mode, true) { state -> hasKickedToSettings = state }
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(mode, color = if (aktif) Color.Black else Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // 4. BLOK TABULASI DAN DAFTAR KONTEN UTAMA
                 TabRow(
                     selectedTabIndex = tabIndex, containerColor = Color(0xFF121212), contentColor = Color.Cyan,
                     indicator = { tabPositions -> TabRowDefaults.Indicator(Modifier.tabIndicatorOffset(tabPositions[tabIndex]), color = Color.Cyan) }
@@ -290,7 +309,6 @@ class MainActivity : ComponentActivity() {
         var targetLat = pref.getFloat("last_lat", -6.9535f).toDouble()
         var targetLon = pref.getFloat("last_lon", 110.2312f).toDouble()
 
-        // MEMBACA DARI BRANKAS LOKASI RUMAH TERKUNCI (BUKAN DARI META_LOKASI YANG VOLATIL)
         val lastUserLokasi = pref.getString("last_user_lokasi", "Blorok, Brangsong, Kab. Kendal") ?: "Blorok, Brangsong, Kab. Kendal"
         val namaBersih = lastUserLokasi.split(" (")[0]
 
@@ -377,7 +395,6 @@ class MainActivity : ComponentActivity() {
                     
                     putString("meta_lokasi", respons.meta_lokasi)
                     
-                    // JIKA DATA DIHASILKAN OLEH GPS RADAR AKTIF, KUNCI PERMANEN KE BRANKAS PENGGUNA TERAKHIR
                     if (perluGeocode) {
                         putString("last_user_lokasi", respons.meta_lokasi)
                     }

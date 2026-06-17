@@ -6,39 +6,25 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import java.util.concurrent.TimeUnit
 
-// STRUKTUR PENAMPUNG KERAPATAN DATA EVOLUSI ZF
+// --- STRUKTUR PENAMPUNG MATRIKS RAKSASA ZF ---
 data class HfResponse(
-    val cuaca: CuacaData, 
+    val cuaca: CuacaData,
+    val proyeksi_cuaca: ProyeksiCuacaData,
     val bencana: BencanaData,
     val data_domestik: List<MatriksAnomaliNetwork>,
     val data_global: List<MatriksAnomaliNetwork>
 )
 
-data class CuacaData(
-    val suhu: String, 
-    val angin: String,
-    val kelembapan: String,
-    val awan: String,
-    val presipitasi: String
-)
+data class CuacaData(val suhu: String, val angin: String, val kelembapan: String, val awan: String, val presipitasi: String)
+data class ProyeksiCuacaData(val per_jam: List<ProyeksiJam>, val harian: List<ProyeksiHari>)
+data class ProyeksiJam(val waktu: String, val suhu: String, val probabilitas_hujan: String)
+data class ProyeksiHari(val hari: String, val suhu_max: String, val suhu_min: String, val prob_hujan: String)
+data class BencanaData(val lokasi: String, val skala: String, val status_bahaya: String, val kode_warna: String)
 
-data class BencanaData(
-    val lokasi: String, 
-    val skala: String, 
-    val status_bahaya: String, 
-    val kode_warna: String
-)
-
-// Penampung Array Litosfer dari Peladen Awan
 data class MatriksAnomaliNetwork(
-    val negara: String,
-    val entitas: String,
-    val jenis: String,
-    val probabilitas: String,
-    val skala: String,
-    val bahaya: String,
-    val waktu: String,
-    val warna_kode: String
+    val negara: String, val entitas: String, val jenis: String, 
+    val probabilitas: String, val skala: String, val bahaya: String, 
+    val waktu: String, val warna_kode: String
 )
 
 interface HfApi {
@@ -48,8 +34,8 @@ interface HfApi {
 
 object NetworkMatriks {
     private val klienToleransi = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS) 
-        .readTimeout(60, TimeUnit.SECONDS)    
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     val api: HfApi by lazy {

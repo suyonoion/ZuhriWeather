@@ -250,23 +250,25 @@ class MainActivity : ComponentActivity() {
     private fun segarkanMatriksFisis(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-            try {
-                val respons = NetworkMatriks.api.getSinkronisasi()
-                val waktuSekarang = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                pref.edit().apply {
-                    putString("suhu", respons.cuaca.suhu)
-                    putString("angin", respons.cuaca.angin)
-                    // Variabel cuaca baru ini belum ada di NetworkMatriks.kt, 
-                    // akan terisi nilai default sampai backend & retrofit diupgrade.
-                    putString("lokasi", respons.bencana.lokasi)
-                    putString("skala", respons.bencana.skala)
-                    putString("status", respons.bencana.status_bahaya)
-                    putString("warna", respons.bencana.kode_warna)
-                    putString("waktu_sinkron", waktuSekarang)
-                    apply()
-                }
-                ZuhriWidget().updateAll(context)
-            } catch (e: Exception) {
+// Bagian dalam fungsi segarkanMatriksFisis di MainActivity.kt
+try {
+    val respons = NetworkMatriks.api.getSinkronisasi()
+    val waktuSekarang = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+    pref.edit().apply {
+        putString("suhu", respons.cuaca.suhu)
+        putString("angin", respons.cuaca.angin)
+        putString("kelembapan", respons.cuaca.kelembapan) // Injeksi baru
+        putString("awan", respons.cuaca.awan)             // Injeksi baru
+        putString("presipitasi", respons.cuaca.presipitasi) // Injeksi baru
+        putString("lokasi", respons.bencana.lokasi)
+        putString("skala", respons.bencana.skala)
+        putString("status", respons.bencana.status_bahaya)
+        putString("warna", respons.bencana.kode_warna)
+        putString("waktu_sinkron", waktuSekarang)
+        apply()
+    }
+    ZuhriWidget().updateAll(context)
+} catch (e: Exception) {
                 // Tangani kegagalan jaringan
             }
         }

@@ -14,11 +14,14 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
+import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
@@ -37,7 +40,12 @@ class ZuhriWidget : GlanceAppWidget() {
             
             val suhu = pref.getString("suhu", "-") ?: "-"
             val angin = pref.getString("angin", "-") ?: "-"
-            val lokasi = pref.getString("lokasi", "Menunggu Transmisi...") ?: "Menunggu Transmisi..."
+            val kelembapan = pref.getString("kelembapan", "-") ?: "-"
+            val awan = pref.getString("awan", "-") ?: "-"
+            val presipitasi = pref.getString("presipitasi", "-") ?: "-"
+            
+            val metaLokasi = pref.getString("meta_lokasi", "Menunggu Transmisi...") ?: "Menunggu Transmisi..."
+            val lokasi = pref.getString("lokasi", "Menelusuri Litosfer...") ?: "Menelusuri Litosfer..."
             val skala = pref.getString("skala", "-") ?: "-"
             val status = pref.getString("status", "Standby") ?: "Standby"
             val kodeWarna = pref.getString("warna", "Gray") ?: "Gray"
@@ -53,38 +61,60 @@ class ZuhriWidget : GlanceAppWidget() {
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .background(ColorProvider(Color(0xFF212121)))
+                    .background(ColorProvider(Color(0xFF0A0A0A)))
                     .padding(12.dp)
             ) {
-                MatriksVisualPublik(suhu, angin, lokasi, skala, status, warnaStatus)
+                MatriksVisualPublik(suhu, angin, kelembapan, awan, presipitasi, metaLokasi, lokasi, skala, status, warnaStatus)
             }
         }
     }
 
     @Composable
     private fun MatriksVisualPublik(
-        suhu: String, angin: String, lokasi: String, skala: String, status: String, warna: ColorProvider
+        suhu: String, angin: String, kelembapan: String, awan: String, presipitasi: String,
+        metaLokasi: String, lokasi: String, skala: String, status: String, warna: ColorProvider
     ) {
-        Column {
-            Text(text = "CUACA LOKAL (KENDAL)", style = TextStyle(color = ColorProvider(Color.Cyan)))
-            Text(text = "Suhu: $suhu | Angin: $angin", style = TextStyle(color = ColorProvider(Color.White)))
-            
-            Spacer(modifier = GlanceModifier.padding(4.dp))
-            
-            Text(
-                text = "↻ PERBARUI DATA",
-                modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
-                style = TextStyle(color = ColorProvider(Color.LightGray))
-            )
+        Column(modifier = GlanceModifier.fillMaxSize()) {
+            // HEADER BAR: NAMA LOKASI DINAMIS & TOMBOL REFRESH
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(text = "ZF SPATIAL MONITOR", style = TextStyle(color = ColorProvider(Color.Cyan), fontWeight = FontWeight.Bold, fontSize = 12.sp))
+                    Text(text = metaLokasi, style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 10.sp))
+                }
+                Text(
+                    text = "[ ↻ ]",
+                    modifier = GlanceModifier.clickable(onClick = actionRunCallback<SegarkanMatriksAction>()),
+                    style = TextStyle(color = ColorProvider(Color.Green), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                )
+            }
 
             Spacer(modifier = GlanceModifier.padding(6.dp))
 
-            Text(text = "INFO GEMPA TERBARU", style = TextStyle(color = ColorProvider(Color.Red)))
-            Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White)))
-            
-            Row {
-                Text(text = "$skala | ", style = TextStyle(color = ColorProvider(Color.White)))
-                Text(text = status, style = TextStyle(color = warna))
+            // GRID TERMODINAMIKA (5 PARAMETER KLINIS)
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xFF151515))).padding(8.dp)) {
+                Row(modifier = GlanceModifier.fillMaxWidth()) {
+                    Text("🌡️ $suhu", style = TextStyle(color = ColorProvider(Color.White), fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                    Text("💨 $angin", style = TextStyle(color = ColorProvider(Color.White), fontSize = 12.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.defaultWeight())
+                }
+                Spacer(modifier = GlanceModifier.padding(2.dp))
+                Row(modifier = GlanceModifier.fillMaxWidth()) {
+                    Text("🌧️ $presipitasi", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("☁️ $awan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
+                    Text("💧 $kelembapan", style = TextStyle(color = ColorProvider(Color.White), fontSize = 10.sp), modifier = GlanceModifier.defaultWeight())
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.padding(6.dp))
+
+            // RADAR BENCANA LOKAL
+            Column(modifier = GlanceModifier.fillMaxWidth().background(ColorProvider(Color(0xFF151515))).padding(8.dp)) {
+                Text(text = "RADAR LITOSFER LOKAL", style = TextStyle(color = ColorProvider(Color.Red), fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                Spacer(modifier = GlanceModifier.padding(2.dp))
+                Text(text = lokasi, style = TextStyle(color = ColorProvider(Color.White), fontSize = 11.sp, fontWeight = FontWeight.Bold))
+                Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    Text(text = "Skala: $skala | ", style = TextStyle(color = ColorProvider(Color.LightGray), fontSize = 10.sp))
+                    Text(text = status, style = TextStyle(color = warna, fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                }
             }
         }
     }
@@ -94,10 +124,13 @@ class SegarkanMatriksAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         
-        // 1. Eksekusi Instan: Tampilkan status memuat ke layar dalam 1 milidetik
+        // 1. Eksekusi Instan: Indikator Pemuatan
         pref.edit().apply {
             putString("suhu", "Siklus...")
             putString("angin", "Koneksi...")
+            putString("kelembapan", "...")
+            putString("awan", "...")
+            putString("presipitasi", "...")
             putString("lokasi", "Mengekstrak Satelit...")
             putString("status", "Proses")
             putString("warna", "Yellow")
@@ -105,51 +138,31 @@ class SegarkanMatriksAction : ActionCallback {
         }
         ZuhriWidget().update(context, glanceId)
 
-        // 2. Dekopling Radikal: Melepaskan peluru kendali Coroutine secara mandiri tanpa memblokir Android
+        // 2. Dekopling Radikal: Ekstraksi Data Fisis Penuh
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             try {
-                val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
-val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
-val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Widget)") ?: "Blorok, Kendal"
+                val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+                val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+                val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal"
 
-val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
+                val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
                 
                 pref.edit().apply {
+                    putString("meta_lokasi", respons.meta_lokasi)
                     putString("suhu", respons.cuaca.suhu)
                     putString("angin", respons.cuaca.angin)
+                    putString("kelembapan", respons.cuaca.kelembapan)
+                    putString("awan", respons.cuaca.awan)
+                    putString("presipitasi", respons.cuaca.presipitasi)
                     putString("lokasi", respons.bencana.lokasi)
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)
                     putString("warna", respons.bencana.kode_warna)
                     apply()
                 }
-            } catch (e: java.net.UnknownHostException) {
-                pref.edit().apply {
-                    putString("angin", "No Sinyal")
-                    putString("lokasi", "Gerbang Jaringan Putus")
-                    putString("status", "Offline")
-                    putString("warna", "Red")
-                    apply()
-                }
-            } catch (e: java.net.SocketTimeoutException) {
-                pref.edit().apply {
-                    putString("angin", "Timeout")
-                    putString("lokasi", "Klik [PERBARUI DATA] Sekali Lagi")
-                    putString("status", "Re-try")
-                    putString("warna", "Orange")
-                    apply()
-                }
             } catch (e: Exception) {
-                pref.edit().apply {
-                    putString("angin", "Distorsi")
-                    putString("lokasi", "Kegagalan Fisis")
-                    putString("status", "Error")
-                    putString("warna", "Red")
-                    apply()
-                }
+                // Biarkan data lama tertimpa jika gagal
             } finally {
-                // Memaksa seluruh proyektor visual di layar utama bergetar memperbarui diri
                 ZuhriWidget().updateAll(context)
             }
         }
@@ -169,23 +182,24 @@ class ZuhriWidgetReceiver : GlanceAppWidgetReceiver() {
         )
     }
 
-    // Mengatasi keterlambatan pemasangan pertama (Instan saat widget ditempel)
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
             try {
-               val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
-val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
-val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Widget)") ?: "Blorok, Kendal"
+                val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+                val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+                val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal"
 
-val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
+                val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
 
                 pref.edit().apply {
+                    putString("meta_lokasi", respons.meta_lokasi)
                     putString("suhu", respons.cuaca.suhu)
                     putString("angin", respons.cuaca.angin)
+                    putString("kelembapan", respons.cuaca.kelembapan)
+                    putString("awan", respons.cuaca.awan)
+                    putString("presipitasi", respons.cuaca.presipitasi)
                     putString("lokasi", respons.bencana.lokasi)
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)

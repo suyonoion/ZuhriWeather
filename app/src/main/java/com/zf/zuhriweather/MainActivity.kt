@@ -383,17 +383,33 @@ fun DataCard(label: String, nilai: String, ikon: String, modifier: Modifier = Mo
 
 @Composable
 fun KartuProyeksiJam(jam: ProyeksiJam) {
+    // EKSTRAKSI ANGKA DARI STRING (Misal: "60%" -> 60)
+    val persenAngka = jam.probabilitas_hujan.replace("%", "").toIntOrNull() ?: 0
+    
+    // SELEKTOR IKONOGRAFI DINAMIS BERDASARKAN PARAMETER PRESIPITASI
+    val (ikon, warnaIkon) = when {
+        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF)  # Presipitasi Mayor (Deras)
+        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500)  # Presipitasi Ringan / Bersela
+        else -> "☀️" to Color.Yellow                   # Foton Bebas (Cerah)
+    }
+
     Column(
-        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF1A1A1A)).border(1.dp, Color(0xFF333333)).padding(12.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFF1A1A1A))
+            .border(1.dp, Color(0xFF333333), RoundedCornerShape(6.dp))
+            .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(jam.waktu, color = Color.LightGray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
         Text(jam.suhu, color = Color.White, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        Text("🌧️ ${jam.probabilitas_hujan}", color = Color(0xFF00BFFF), fontSize = 9.sp)
+        // RENDERING DINAMIS
+        Text("$ikon ${jam.probabilitas_hujan}", color = warnaIkon, fontSize = 9.sp)
     }
 }
+
 
 @Composable
 fun KartuProyeksiHari(hari: ProyeksiHari) {

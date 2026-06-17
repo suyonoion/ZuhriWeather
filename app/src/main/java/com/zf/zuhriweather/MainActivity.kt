@@ -2,13 +2,16 @@ package com.zf.zuhriweather
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
-import android.content.SharedPreferences
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,9 +70,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // AMBANG BATAS OPERASIONAL MODE SPASIAL
             var modeSpasial by remember { mutableStateOf(pref.getString("opsi_mode", "RADAR") ?: "RADAR") }
             var namaLokasiDinamis by remember { mutableStateOf(pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal") }
+
+            // LAUNCHER OTORISASI GPS ANDROID
+            val requestPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestMultiplePermissions()
+            ) { perms ->
+                if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+                    eksekusiPindaiSatelit(context, "RADAR")
+                }
+            }
+
+            // AUTO-TRIGGER: Todong Izin Lokasi di Detik Pertama Instalasi
+            LaunchedEffect(Unit) {
+                if (modeSpasial == "RADAR" && !cekIzinLokasi(context)) {
+                    requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                }
+            }
 
             // Pemicu Sinkronisasi Berkala (60 Detik)
             LaunchedEffect(modeSpasial) {
@@ -82,29 +100,17 @@ class MainActivity : ComponentActivity() {
             // RE-RENDER TRIGGER KETIKA STORAGE BERUBAH
             var triggerRender by remember { mutableStateOf(0) }
             val listener = remember {
-                SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "waktu_sinkron" || key == "meta_lokasi") {
                         namaLokasiDinamis = pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal"
                         triggerRender++
                     }
                 }
             }
-
             
-            LaunchedEffect(Unit) {
-                pref.registerOnSharedPreferenceChangeListener(listener)
-            }
+            LaunchedEffect(Unit) { pref.registerOnSharedPreferenceChangeListener(listener) }
 
-            // LAUNCHER OTORISASI GPS ANDROID
-            val requestPermissionLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestMultiplePermissions()
-            ) { perms ->
-                if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                    eksekusiPindaiSatelit(context, "RADAR")
-                }
-            }
-
-            // READ STATE DATA
+            // BACA STATE MEMORI FISIS
             val suhu = pref.getString("suhu", "-") ?: "-"
             val angin = pref.getString("angin", "-") ?: "-"
             val kelembapan = pref.getString("kelembapan", "-") ?: "-"
@@ -131,13 +137,13 @@ class MainActivity : ComponentActivity() {
 
             Column(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
                 
-                // HEADER ABSOLUT (DENGAN DETAK METRONOM WAKTU)
+                // HEADER ABSOLUT 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("ZF SPATIAL", color = Color.Cyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text(namaLokasiDinamis, color = Color.LightGray, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
@@ -150,7 +156,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // ARSITEKTUR SAKELAR TARGET MANUAL (SELECTOR ROW)
+                // SAKELAR TARGET MANUAL
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -259,37 +265,28 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
-    // ARSITEKTUR KOORDINAT DAN PROTOKOL FALLBACK LOKASI
+    // ARSITEKTUR KOORDINAT DENGAN PEMAKSAAN PERANGKAT KERAS GPS
     private fun eksekusiPindaiSatelit(context: Context, mode: String) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-        
-        // Matriks Koordinat Statis Override Manual
         var targetLat = pref.getFloat("last_lat", -6.9535f).toDouble()
         var targetLon = pref.getFloat("last_lon", 110.2312f).toDouble()
-        var targetNama = "Blorok, Brangsong (Retensi)"
 
         when (mode) {
-            "SAUNG" -> {
-                targetLat = -7.0500 // Kalibrasikan koordinat fisis Saung JAWA di sini
-                targetLon = 110.3000
-                targetNama = "Saung JAWA, Kendal"
-                tembakJaringanFisis(context, targetLat, targetLon, targetNama)
-            }
-            "KENDAL" -> {
-                targetLat = -6.9200
-                targetLon = 110.2000
-                targetNama = "Kota Kendal"
-                tembakJaringanFisis(context, targetLat, targetLon, targetNama)
-            }
-            "WELERI" -> {
-                targetLat = -6.9740
-                targetLon = 110.0650
-                targetNama = "Kota Weleri"
-                tembakJaringanFisis(context, targetLat, targetLon, targetNama)
-            }
+            "SAUNG" -> tembakJaringanFisis(context, -7.0500, 110.3000, "Saung JAWA, Kendal", false)
+            "KENDAL" -> tembakJaringanFisis(context, -6.9200, 110.2000, "Kota Kendal", false)
+            "WELERI" -> tembakJaringanFisis(context, -6.9740, 110.0650, "Kota Weleri", false)
             "RADAR" -> {
-                // PRIORITAS ABSOLUT: Ambil Data Perangkat GPS Aktif
                 if (cekIzinLokasi(context)) {
+                    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                    val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                    
+                    // JIKA SENSOR MATI: Paksa Buka Menu Pengaturan
+                    if (!isGpsEnabled) {
+                        tembakJaringanFisis(context, targetLat, targetLon, "GPS Perangkat Mati (Tampilkan Retensi)", false)
+                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                        return
+                    }
+
                     try {
                         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
                         fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
@@ -297,39 +294,54 @@ class MainActivity : ComponentActivity() {
                                 if (loc != null) {
                                     targetLat = loc.latitude
                                     targetLon = loc.longitude
-                                    targetNama = "Radar GPS: Dinamis"
-                                    
-                                    // Kunci Kerapatan Koordinat Ke Brankas Memori (Retensi)
                                     pref.edit().apply {
                                         putFloat("last_lat", targetLat.toFloat())
                                         putFloat("last_lon", targetLon.toFloat())
                                         apply()
                                     }
+                                    // Set `true` agar Coroutine menerjemahkan koordinat menjadi nama desa fisis
+                                    tembakJaringanFisis(context, targetLat, targetLon, "Mendeteksi Koordinat...", true)
                                 } else {
-                                    targetNama = "Radar GPS Pasif (Blorok)"
+                                    tembakJaringanFisis(context, targetLat, targetLon, "Radar Buta (Tampilkan Retensi)", false)
                                 }
-                                tembakJaringanFisis(context, targetLat, targetLon, targetNama)
                             }
                             .addOnFailureListener {
-                                tembakJaringanFisis(context, targetLat, targetLon, "Radar GPS Gagal (Blorok)")
+                                tembakJaringanFisis(context, targetLat, targetLon, "Radar Gagal (Tampilkan Retensi)", false)
                             }
                     } catch (e: SecurityException) {
-                        tembakJaringanFisis(context, targetLat, targetLon, "Radar GPS Terblokir (Blorok)")
+                        tembakJaringanFisis(context, targetLat, targetLon, "Izin Diblokir", false)
                     }
                 } else {
-                    // PRIORITAS TERSIER: Fallback Ke Desa Blorok Jika Izin Ditolak
-                    tembakJaringanFisis(context, -6.9535, 110.2312, "Radar GPS Off (Blorok)")
+                    tembakJaringanFisis(context, targetLat, targetLon, "Izin Lokasi Ditolak", false)
                 }
             }
         }
     }
 
-    private fun tembakJaringanFisis(context: Context, lat: Double, lon: Double, namaMode: String) {
+    // INJEKSI MESIN PENTERJEMAH LOKASI (GEOCODER) DI LATAR BELAKANG
+    private fun tembakJaringanFisis(context: Context, lat: Double, lon: Double, namaAwal: String, perluGeocode: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
             val gson = Gson()
+            
+            var namaFinal = namaAwal
+            if (perluGeocode) {
+                try {
+                    val geocoder = Geocoder(context, Locale("id", "ID"))
+                    val alamat = geocoder.getFromLocation(lat, lon, 1)
+                    if (!alamat.isNullOrEmpty()) {
+                        val detail = alamat[0]
+                        val desa = detail.locality ?: detail.subAdminArea ?: detail.thoroughfare ?: "Koordinat Fisis"
+                        val kota = detail.adminArea ?: "Tidak Terdaftar"
+                        namaFinal = "$desa, $kota"
+                    }
+                } catch (e: Exception) {
+                    namaFinal = "Satelit: ${lat.toString().take(7)}, ${lon.toString().take(7)}"
+                }
+            }
+
             try {
-                val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, namaMode)
+                val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, namaFinal)
                 val waktuSekarang = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
                 pref.edit().apply {
                     putString("suhu", respons.cuaca.suhu)
@@ -338,8 +350,7 @@ class MainActivity : ComponentActivity() {
                     putString("awan", respons.cuaca.awan)
                     putString("presipitasi", respons.cuaca.presipitasi)
                     
-                    putString("meta_lokasi", respons.meta_lokasi) // Menyimpan nama lokasi riil dari server
-                    
+                    putString("meta_lokasi", respons.meta_lokasi)
                     putString("lokasi", respons.bencana.lokasi)
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)
@@ -383,36 +394,30 @@ fun DataCard(label: String, nilai: String, ikon: String, modifier: Modifier = Mo
 
 @Composable
 fun KartuProyeksiJam(jam: ProyeksiJam) {
-    // EKSTRAKSI ANGKA DARI STRING (Misal: "60%" -> 60)
     val persenAngka = jam.probabilitas_hujan.replace("%", "").toIntOrNull() ?: 0
-    
-    // SELEKTOR IKONOGRAFI DINAMIS BERDASARKAN PARAMETER PRESIPITASI
     val (ikon, warnaIkon) = when {
-        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF) // Presipitasi Mayor (Deras)
-        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500) // Presipitasi Ringan / Bersela
-        else -> "☀️" to Color.Yellow                   // Foton Bebas (Cerah)
+        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF)
+        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500)
+        else -> "☀️" to Color.Yellow
     }
-
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color(0xFF1A1A1A))
-            .border(1.dp, Color(0xFF333333), RoundedCornerShape(6.dp))
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF1A1A1A)).border(1.dp, Color(0xFF333333)).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(jam.waktu, color = Color.LightGray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
         Text(jam.suhu, color = Color.White, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        // RENDERING DINAMIS
         Text("$ikon ${jam.probabilitas_hujan}", color = warnaIkon, fontSize = 9.sp)
     }
 }
 
-
+// EVOLUSI PROYEKSI HARIAN: INJEKSI IKONOGRAFI FISIS
 @Composable
 fun KartuProyeksiHari(hari: ProyeksiHari) {
+    val persenAngka = hari.prob_hujan.replace("%", "").toIntOrNull() ?: 0
+    val (ikon, warnaIkon) = when {
+        persenAngka >= 60 -> "🌧️" to Color(0xFF00BFFF)
+        persenAngka >= 20 -> "🌦️" to Color(0xFFFFA500)
+        else -> "☀️" to Color.Yellow
+    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF151515)).padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -420,7 +425,7 @@ fun KartuProyeksiHari(hari: ProyeksiHari) {
     ) {
         Text(hari.hari, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Text("Max: ${hari.suhu_max} | Min: ${hari.suhu_min}", color = Color.LightGray, fontSize = 11.sp)
-        Text("🌧️ ${hari.prob_hujan}", color = Color(0xFF00BFFF), fontSize = 11.sp)
+        Text("$ikon ${hari.prob_hujan}", color = warnaIkon, fontSize = 11.sp)
     }
 }
 

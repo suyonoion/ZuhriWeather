@@ -12,7 +12,8 @@
         android:roundIcon="@drawable/ic_zf_logo"
         android:label="ZF Spatial"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ZuhriWeather">
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
        <activity
             android:name=".MainActivity"
             android:exported="true">

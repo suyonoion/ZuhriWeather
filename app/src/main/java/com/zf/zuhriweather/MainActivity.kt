@@ -65,16 +65,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // State Data Latar Depan
+            // State Data Latar Depan (Litosfer & Atmosfer)
             var suhu by remember { mutableStateOf("-") }
             var angin by remember { mutableStateOf("-") }
+            var kelembapan by remember { mutableStateOf("-") }
+            var awan by remember { mutableStateOf("-") }
+            var presipitasi by remember { mutableStateOf("-") }
+            
             var lokasi by remember { mutableStateOf("Menunggu Transmisi...") }
             var skala by remember { mutableStateOf("-") }
             var status by remember { mutableStateOf("Standby") }
             var warnaCode by remember { mutableStateOf("Gray") }
             var waktuSinkron by remember { mutableStateOf("-") }
 
-            // Navigasi Tab
             var tabIndex by remember { mutableStateOf(0) }
             val tabTitles = listOf("LOKAL", "DOMESTIK", "GLOBAL")
 
@@ -82,6 +85,10 @@ class MainActivity : ComponentActivity() {
                 val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
                 suhu = pref.getString("suhu", "-") ?: "-"
                 angin = pref.getString("angin", "-") ?: "-"
+                kelembapan = pref.getString("kelembapan", "Menunggu...") ?: "Menunggu..."
+                awan = pref.getString("awan", "Menunggu...") ?: "Menunggu..."
+                presipitasi = pref.getString("presipitasi", "Menunggu...") ?: "Menunggu..."
+                
                 lokasi = pref.getString("lokasi", "-") ?: "-"
                 skala = pref.getString("skala", "-") ?: "-"
                 status = pref.getString("status", "-") ?: "-"
@@ -92,6 +99,9 @@ class MainActivity : ComponentActivity() {
                     when (key) {
                         "suhu" -> suhu = p.getString("suhu", "-") ?: "-"
                         "angin" -> angin = p.getString("angin", "-") ?: "-"
+                        "kelembapan" -> kelembapan = p.getString("kelembapan", "Menunggu...") ?: "Menunggu..."
+                        "awan" -> awan = p.getString("awan", "Menunggu...") ?: "Menunggu..."
+                        "presipitasi" -> presipitasi = p.getString("presipitasi", "Menunggu...") ?: "Menunggu..."
                         "lokasi" -> lokasi = p.getString("lokasi", "-") ?: "-"
                         "skala" -> skala = p.getString("skala", "-") ?: "-"
                         "status" -> status = p.getString("status", "-") ?: "-"
@@ -152,11 +162,28 @@ class MainActivity : ComponentActivity() {
                         0 -> { // TAB 0: LOKAL (ALARM & CUACA)
                             item {
                                 SectionHeader("TERMODINAMIKA LOKAL (KENDAL)", Color(0xFF00BFFF))
+                                
+                                // GRID CUACA BARIS 1
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    DataCard("Suhu Aktif", suhu, modifier = Modifier.weight(1f))
+                                    DataCard("Suhu Aktif", suhu, "🌡️", modifier = Modifier.weight(1f))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    DataCard("Vektor Angin", angin, modifier = Modifier.weight(1f))
+                                    DataCard("Vektor Angin", angin, "💨", modifier = Modifier.weight(1f))
                                 }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // GRID CUACA BARIS 2
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    DataCard("Presipitasi", presipitasi, "🌧️", modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    DataCard("Tutupan Foton", awan, "☁️", modifier = Modifier.weight(1f))
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // GRID CUACA BARIS 3
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    DataCard("Kerapatan Air (RH)", kelembapan, "💧", modifier = Modifier.weight(1f))
+                                }
+                                
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 SectionHeader("STATUS LITOSFER LOKAL (RADAR EVAKUASI)", Color.Red)
@@ -229,6 +256,8 @@ class MainActivity : ComponentActivity() {
                 pref.edit().apply {
                     putString("suhu", respons.cuaca.suhu)
                     putString("angin", respons.cuaca.angin)
+                    // Variabel cuaca baru ini belum ada di NetworkMatriks.kt, 
+                    // akan terisi nilai default sampai backend & retrofit diupgrade.
                     putString("lokasi", respons.bencana.lokasi)
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)
@@ -238,7 +267,7 @@ class MainActivity : ComponentActivity() {
                 }
                 ZuhriWidget().updateAll(context)
             } catch (e: Exception) {
-                // Biarkan handler visual mengurus ruptur jaringan
+                // Tangani kegagalan jaringan
             }
         }
     }
@@ -257,8 +286,9 @@ fun SectionHeader(judul: String, warna: Color) {
     )
 }
 
+// Evolusi DataCard: Injeksi Ikonografi Spasial
 @Composable
-fun DataCard(label: String, nilai: String, modifier: Modifier = Modifier) {
+fun DataCard(label: String, nilai: String, ikon: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
@@ -266,13 +296,15 @@ fun DataCard(label: String, nilai: String, modifier: Modifier = Modifier) {
             .border(1.dp, Color(0xFF333333), RoundedCornerShape(6.dp))
             .padding(16.dp)
     ) {
-        Text(text = label, color = Color.Gray, fontSize = 11.sp)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = nilai, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = ikon, fontSize = 16.sp, modifier = Modifier.padding(end = 6.dp))
+            Text(text = label, color = Color.Gray, fontSize = 11.sp)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = nilai, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
-// Kartu Resolusi Tinggi Pengganti Tabel Kaku
 @Composable
 fun KartuAnomali(data: MatriksAnomali) {
     Column(
@@ -314,7 +346,7 @@ fun KartuAnomali(data: MatriksAnomali) {
     }
 }
 
-// Data Proyektor (Blueprint) menunggu suplai HF
+// Data Proyektor Tetap Utuh
 object DataSimulasi {
     val global = listOf(
         MatriksAnomali("Filipina", "Mindanao (Sesar Cotabato)", "Gempa Tektonik", "100% (Faktual)", "7.8 SR", "[AWAS] Keruntuhan Fatal", "17 Jun 2026, 08:12 WIB", Color.Red),

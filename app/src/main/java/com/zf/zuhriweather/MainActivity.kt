@@ -72,32 +72,34 @@ class MainActivity : ComponentActivity() {
 
             var modeSpasial by remember { mutableStateOf(pref.getString("opsi_mode", "RADAR") ?: "RADAR") }
             var namaLokasiDinamis by remember { mutableStateOf(pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal") }
+            
+            var hasKickedToSettings by remember { mutableStateOf(false) }
 
-            // LAUNCHER OTORISASI GPS ANDROID
+            // LAUNCHER OTORISASI GPS
             val requestPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions()
             ) { perms ->
                 if (perms[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                    eksekusiPindaiSatelit(context, "RADAR")
+                    eksekusiPindaiSatelit(context, "RADAR", hasKickedToSettings) { state -> hasKickedToSettings = state }
                 }
             }
 
-            // AUTO-TRIGGER: Todong Izin Lokasi di Detik Pertama Instalasi
+            // AUTO-TRIGGER AWAL
             LaunchedEffect(Unit) {
                 if (modeSpasial == "RADAR" && !cekIzinLokasi(context)) {
                     requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 }
             }
 
-            // Pemicu Sinkronisasi Berkala (60 Detik)
+            // SIKLUS SINKRONISASI BERKALA
             LaunchedEffect(modeSpasial) {
                 while(true) {
-                    eksekusiPindaiSatelit(context, modeSpasial)
+                    eksekusiPindaiSatelit(context, modeSpasial, true) { state -> hasKickedToSettings = state }
                     delay(60000)
                 }
             }
 
-            // RE-RENDER TRIGGER KETIKA STORAGE BERUBAH
+            // RE-RENDER KETIKA DATA STORAGE BERUBAH
             var triggerRender by remember { mutableStateOf(0) }
             val listener = remember {
                 android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -107,7 +109,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            
             LaunchedEffect(Unit) { pref.registerOnSharedPreferenceChangeListener(listener) }
 
             // BACA STATE MEMORI FISIS
@@ -137,7 +138,6 @@ class MainActivity : ComponentActivity() {
 
             Column(modifier = Modifier.fillMaxSize().background(Color(0xFF0A0A0A))) {
                 
-                // HEADER ABSOLUT 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,7 +156,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // SAKELAR TARGET MANUAL
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -172,10 +171,15 @@ class MainActivity : ComponentActivity() {
                                 .clickable {
                                     modeSpasial = mode
                                     pref.edit().putString("opsi_mode", mode).apply()
-                                    if (mode == "RADAR" && !cekIzinLokasi(context)) {
-                                        requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                    if (mode == "RADAR") {
+                                        if (!cekIzinLokasi(context)) {
+                                            requestPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                        } else {
+                                            hasKickedToSettings = false
+                                            eksekusiPindaiSatelit(context, mode, false) { state -> hasKickedToSettings = state }
+                                        }
                                     } else {
-                                        eksekusiPindaiSatelit(context, mode)
+                                        eksekusiPindaiSatelit(context, mode, true) { state -> hasKickedToSettings = state }
                                     }
                                 }
                                 .padding(vertical = 6.dp),
@@ -252,7 +256,10 @@ class MainActivity : ComponentActivity() {
                         Text(
                             text = "[ ↻ PAKSA SINKRONISASI SATELIT ]",
                             color = Color.Green, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.fillMaxWidth().clickable { eksekusiPindaiSatelit(context, modeSpasial) }.padding(vertical = 16.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { 
+                                hasKickedToSettings = false
+                                eksekusiPindaiSatelit(context, modeSpasial, false) { state -> hasKickedToSettings = state } 
+                            }.padding(vertical = 16.dp),
                             textAlign = TextAlign.Center
                         )
                     }
@@ -265,11 +272,15 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
-    // ARSITEKTUR KOORDINAT DENGAN PEMAKSAAN PERANGKAT KERAS GPS
-    private fun eksekusiPindaiSatelit(context: Context, mode: String) {
+    // KALIBRASI LOGIKA: EKSTRAKSI IDENTITAS GEOGRAFIS SAAT RETENSI
+    private fun eksekusiPindaiSatelit(context: Context, mode: String, hasKicked: Boolean, updateKickState: (Boolean) -> Unit) {
         val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         var targetLat = pref.getFloat("last_lat", -6.9535f).toDouble()
         var targetLon = pref.getFloat("last_lon", 110.2312f).toDouble()
+
+        // Ambil nama lokasi terakhir dari brankas, potong tag lama agar bersih
+        val namaLama = pref.getString("meta_lokasi", "Blorok, Brangsong, Kab. Kendal") ?: "Blorok, Brangsong, Kab. Kendal"
+        val namaBersih = namaLama.split(" (")[0]
 
         when (mode) {
             "SAUNG" -> tembakJaringanFisis(context, -7.0500, 110.3000, "Saung JAWA, Kendal", false)
@@ -280,10 +291,15 @@ class MainActivity : ComponentActivity() {
                     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
                     val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
                     
-                    // JIKA SENSOR MATI: Paksa Buka Menu Pengaturan
                     if (!isGpsEnabled) {
-                        tembakJaringanFisis(context, targetLat, targetLon, "GPS Perangkat Mati (Tampilkan Retensi)", false)
-                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                        if (!hasKicked) {
+                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Menunggu Aktivasi)", false)
+                            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                            updateKickState(true)
+                        } else {
+                            // SEKARANG MENAMPILKAN LOKASI ASLI + STATUS RETENSI
+                            tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
+                        }
                         return
                     }
 
@@ -299,17 +315,16 @@ class MainActivity : ComponentActivity() {
                                         putFloat("last_lon", targetLon.toFloat())
                                         apply()
                                     }
-                                    // Set `true` agar Coroutine menerjemahkan koordinat menjadi nama desa fisis
                                     tembakJaringanFisis(context, targetLat, targetLon, "Mendeteksi Koordinat...", true)
                                 } else {
-                                    tembakJaringanFisis(context, targetLat, targetLon, "Radar Buta (Tampilkan Retensi)", false)
+                                    tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
                                 }
                             }
                             .addOnFailureListener {
-                                tembakJaringanFisis(context, targetLat, targetLon, "Radar Gagal (Tampilkan Retensi)", false)
+                                tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Retensi)", false)
                             }
                     } catch (e: SecurityException) {
-                        tembakJaringanFisis(context, targetLat, targetLon, "Izin Diblokir", false)
+                        tembakJaringanFisis(context, targetLat, targetLon, "$namaBersih (Izin Diblokir)", false)
                     }
                 } else {
                     tembakJaringanFisis(context, targetLat, targetLon, "Izin Lokasi Ditolak", false)
@@ -318,7 +333,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // INJEKSI MESIN PENTERJEMAH LOKASI (GEOCODER) DI LATAR BELAKANG
     private fun tembakJaringanFisis(context: Context, lat: Double, lon: Double, namaAwal: String, perluGeocode: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
             val pref = context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
@@ -409,7 +423,6 @@ fun KartuProyeksiJam(jam: ProyeksiJam) {
     }
 }
 
-// EVOLUSI PROYEKSI HARIAN: INJEKSI IKONOGRAFI FISIS
 @Composable
 fun KartuProyeksiHari(hari: ProyeksiHari) {
     val persenAngka = hari.prob_hujan.replace("%", "").toIntOrNull() ?: 0

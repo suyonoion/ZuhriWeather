@@ -384,6 +384,7 @@ class MainActivity : ComponentActivity() {
             }
 
             try {
+                // EKSEKUSI TRANSMISI SATELIT (BUTUH INTERNET)
                 val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, namaFinal)
                 val waktuSekarang = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
                 pref.edit().apply {
@@ -412,9 +413,23 @@ class MainActivity : ComponentActivity() {
                     apply()
                 }
                 ZuhriWidget().updateAll(context)
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                // PROTOKOL RUPTUR JARINGAN (INTERNET MATI/SERVER DOWN)
+                // Sistem tidak crash. Ia menarik nama lokasi terakhir dan menempelkan stempel peringatan.
+                val lokasiTerakhir = pref.getString("meta_lokasi", "Lokasi Tidak Diketahui") ?: "Lokasi Tidak Diketahui"
+                val lokasiBersih = lokasiTerakhir.replace(" ⚠️ [OFFLINE]", "")
+                
+                pref.edit().apply {
+                    // Data cuaca dan gempa lama dibiarkan hidup sebagai referensi fisis, 
+                    // tetapi label atas diubah menjadi peringatan merah.
+                    putString("meta_lokasi", "$lokasiBersih \u26A0\uFE0F [OFFLINE]")
+                    apply()
+                }
+                ZuhriWidget().updateAll(context)
+            }
         }
     }
+
 }
 
 // ================= KOMPONEN UX / UI PUBLIK ================= //

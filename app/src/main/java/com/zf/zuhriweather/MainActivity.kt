@@ -465,19 +465,20 @@ class MainActivity : ComponentActivity() {
         }   
        ========== */
         //end setContent
-          // ================== INJEKSI SIRKUIT PENGUJI ==================
-        // Kita ciptakan portal antarmuka baru yang murni dan terisolasi
+        // ================== INJEKSI SIRKUIT PENGUJI ==================
         setContent {
-            ZuhriWeatherTheme {
+            // Menggunakan MaterialTheme murni untuk menghindari ralat referensi tema lokal
+            androidx.compose.material3.MaterialTheme {
                 androidx.compose.material3.Surface(
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
+                    color = androidx.compose.ui.graphics.Color.Black
                 ) {
                     LayarUjiVisualAbsolut()
                 }
             }
         }
         // =============================================================
+
     }
 
     private fun cekIzinLokasi(context: Context): Boolean {

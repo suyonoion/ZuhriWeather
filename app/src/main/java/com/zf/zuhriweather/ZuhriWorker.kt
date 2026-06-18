@@ -19,14 +19,12 @@ class ZuhriWorker(private val appContext: Context, workerParams: WorkerParameter
     override suspend fun doWork(): Result {
         val pref = appContext.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
         
-        return try {val pref = applicationContext.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE)
-val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
-val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
-val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Worker)") ?: "Blorok, Kendal"
+        return try {
+            val lat = pref.getFloat("last_lat", -6.9535f).toDouble()
+            val lon = pref.getFloat("last_lon", 110.2312f).toDouble()
+            val lokasiNama = pref.getString("meta_lokasi", "Blorok, Kendal (Worker)") ?: "Blorok, Kendal"
 
-val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
-
-            
+            val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
             
             val lokasi = respons.bencana.lokasi
             val skala = respons.bencana.skala
@@ -35,8 +33,12 @@ val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
 
             // 1. Memahat memori lokal untuk sinkronisasi visual Widget/Aplikasi
             pref.edit().apply {
+                putString("meta_lokasi", respons.meta_lokasi)
                 putString("suhu", respons.cuaca.suhu)
                 putString("angin", respons.cuaca.angin)
+                putString("kelembapan", respons.cuaca.kelembapan)
+                putString("awan", respons.cuaca.awan)
+                putString("presipitasi", respons.cuaca.presipitasi)
                 putString("lokasi", lokasi)
                 putString("skala", skala)
                 putString("status", status)
@@ -45,37 +47,50 @@ val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
             }
             ZuhriWidget().updateAll(appContext)
 
-            // 2. FILTER 1: Anti-Spam (Hanya proses jika ini adalah EVENT BARU)
+            // ================= PROTOKOL 1 & 2: ANOMALI LITOSFER (GEMPA) ================= //
+            
             val tandaTanganEventId = lokasi + skala
             val terakhirNotifikasi = pref.getString("LAST_NOTIFIED_EVENT", "")
             
-            if (tandaTanganEventId == terakhirNotifikasi) {
-                // Event sama dengan 15 menit lalu. Hentikan eksekusi, cegah spam.
-                return Result.success()
+            if (tandaTanganEventId != terakhirNotifikasi) {
+                val IsIndonesia = lokasi.contains("Indonesia", ignoreCase = true) || 
+                                  lokasi.contains("Java", ignoreCase = true) || 
+                                  lokasi.contains("Kendal", ignoreCase = true)
+
+                if ((kodeWarna == "Red" || kodeWarna == "Orange") && IsIndonesia) {
+                    val IsKritisLokal = lokasi.contains("Kendal", ignoreCase = true) || 
+                                        lokasi.contains("Jawa Tengah", ignoreCase = true) ||
+                                        lokasi.contains("Java", ignoreCase = true)
+
+                    if (IsKritisLokal) {
+                        tembakAlarmKritisLokal(lokasi, skala, status)
+                    } else {
+                        tembakNotifikasiDomestik(lokasi, skala, status)
+                    }
+                    pref.edit().putString("LAST_NOTIFIED_EVENT", tandaTanganEventId).apply()
+                }
             }
 
-            // 3. FILTER 2: Batasan Geografis (Hanya proses jika berdampak pada Indonesia)
-            val IsIndonesia = lokasi.contains("Indonesia", ignoreCase = true) || 
-                              lokasi.contains("Java", ignoreCase = true) || 
-                              lokasi.contains("Kendal", ignoreCase = true)
-
-            if ((kodeWarna == "Red" || kodeWarna == "Orange") && IsIndonesia) {
+            // ================= PROTOKOL 3: ANOMALI TERMODINAMIKA (CUACA EKSTREM) ================= //
+            
+            val presipitasi = respons.cuaca.presipitasi
+            val angkaHujan = presipitasi.replace(" mm/j", "").replace("[Deras]", "").trim().toDoubleOrNull() ?: 0.0
+            
+            // Pelatuk: Jika ada label "[Deras]" atau debit air lebih dari 5.0 mm/j
+            val isHujanEkstrem = presipitasi.contains("Deras", ignoreCase = true) || angkaHujan >= 5.0
+            
+            if (isHujanEkstrem) {
+                val tandaTanganCuaca = "CUACA_$presipitasi"
+                val terakhirNotifCuaca = pref.getString("LAST_NOTIFIED_WEATHER", "")
                 
-                // 4. FILTER 3: Eskalasi Audio Berdasarkan Jarak Deteksi Text
-                val IsKritisLokal = lokasi.contains("Kendal", ignoreCase = true) || 
-                                    lokasi.contains("Jawa Tengah", ignoreCase = true) ||
-                                    lokasi.contains("Java", ignoreCase = true)
-
-                if (IsKritisLokal) {
-                    // Krisis Radius Dekat: Tembak Alarm Sirine Agresif
-                    tembakAlarmKritisLokal(lokasi, skala, status)
-                } else {
-                    // Domestik Jauh (Misal: Sumatra/Sulawesi): Cukup Notifikasi Standar
-                    tembakNotifikasiDomestik(lokasi, skala, status)
+                // Mencegah tembakan notifikasi berulang untuk status hujan yang sama dalam 15 menit
+                if (tandaTanganCuaca != terakhirNotifCuaca) {
+                    tembakNotifikasiCuacaEkstrem(lokasiNama, respons.cuaca.suhu, presipitasi)
+                    pref.edit().putString("LAST_NOTIFIED_WEATHER", tandaTanganCuaca).apply()
                 }
-
-                // Mengunci tanda tangan agar tidak berbunyi lagi pada siklus 15 menit berikutnya
-                pref.edit().putString("LAST_NOTIFIED_EVENT", tandaTanganEventId).apply()
+            } else {
+                // Reset memori cuaca jika hujan reda, agar siap menembak lagi jika hujan deras kembali turun
+                pref.edit().putString("LAST_NOTIFIED_WEATHER", "AMAN").apply()
             }
             
             Result.success()
@@ -84,24 +99,16 @@ val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
         }
     }
 
-    // Protokol 1: Alarm Audio Agresif (Menggunakan Ringtone ALARM Sistem, Bukan Chime Notifikasi)
+    // Protokol 1: Alarm Audio Agresif (Gempa Lokal)
     private fun tembakAlarmKritisLokal(lokasi: String, skala: String, status: String) {
         val manager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val saluranId = "zf_alarm_kritis_lokal"
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) // Paksa panggil audio sirine HP
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val saluran = NotificationChannel(
-                saluranId,
-                "🚨 ALARM KRITIS LOKAL (ZUHRI)",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
+            val saluran = NotificationChannel(saluranId, "🚨 ALARM KRITIS LOKAL", NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
-                // Mengunci jalur audio agar sistem operasi meloloskan suara sirine penuh
-                setSound(alarmUri, AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build())
+                setSound(alarmUri, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             }
             manager.createNotificationChannel(saluran)
         }
@@ -110,26 +117,22 @@ val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("🚨 ANCAMAN DEKAT: RUPTUR LITOSFER")
             .setContentText("Lokasi: $lokasi | Mag: $skala | $status")
-            .setPriority(NotificationCompat.PRIORITY_MAX) // Kasta tertinggi Android UI
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setSound(alarmUri)
-            .setFullScreenIntent(null, true) // Memaksa menembus layar jika HP terkunci
+            .setFullScreenIntent(null, true)
             .setAutoCancel(true)
 
         manager.notify(100, peluruAlarm.build())
     }
 
-    // Protokol 2: Notifikasi Standar untuk Wilayah Domestik Luar Jangkauan Bahaya Fisis Kendal
+    // Protokol 2: Notifikasi Standar (Gempa Domestik)
     private fun tembakNotifikasiDomestik(lokasi: String, skala: String, status: String) {
         val manager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val saluranId = "zf_notifikasi_domestik"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val saluran = NotificationChannel(
-                saluranId,
-                "Info Gempa Nasional",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
+            val saluran = NotificationChannel(saluranId, "Info Gempa Nasional", NotificationManager.IMPORTANCE_DEFAULT)
             manager.createNotificationChannel(saluran)
         }
 
@@ -141,5 +144,25 @@ val respons = NetworkMatriks.api.getSinkronisasi(lat, lon, lokasiNama)
             .setAutoCancel(true)
 
         manager.notify(101, peluruNotif.build())
+    }
+
+    // Protokol 3: Notifikasi Cuaca Ekstrem (Hujan Deras / Badai)
+    private fun tembakNotifikasiCuacaEkstrem(lokasi: String, suhu: String, presipitasi: String) {
+        val manager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val saluranId = "zf_notifikasi_cuaca"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val saluran = NotificationChannel(saluranId, "Peringatan Cuaca Ekstrem", NotificationManager.IMPORTANCE_HIGH)
+            manager.createNotificationChannel(saluran)
+        }
+
+        val peluruNotif = NotificationCompat.Builder(appContext, saluranId)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert) // Menggunakan ikon peringatan bawaan Android
+            .setContentTitle("🌧️ PERINGATAN: PRESIPITASI EKSTREM")
+            .setContentText("Target: $lokasi | Intensitas: $presipitasi | Suhu: $suhu")
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // Prioritas tinggi agar muncul di atas layar (Heads-up)
+            .setAutoCancel(true)
+
+        manager.notify(102, peluruNotif.build())
     }
 }

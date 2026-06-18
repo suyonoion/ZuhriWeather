@@ -80,9 +80,10 @@ class MainActivity : ComponentActivity() {
             var namaLokasiDinamis by remember { mutableStateOf(pref.getString("meta_lokasi", "Blorok, Kendal") ?: "Blorok, Kendal") }
             var hasKickedToSettings by remember { mutableStateOf(false) }
             
-            // PANEL KONTROL POP-UP
+                        // PANEL KONTROL POP-UP
             var tampilDialogInfo by remember { mutableStateOf(false) }
-            var tampilDetailGempa by remember { mutableStateOf(false) } // PELATUK INTERAKTIF PANEL GEMPA
+            var tampilDetailGempa by remember { mutableStateOf(false) }
+            var dataForensikAktif by remember { mutableStateOf(ParameterForensik()) } // MEMORI DINAMIS
 
             val requestPermissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -219,12 +220,21 @@ class MainActivity : ComponentActivity() {
 
                     // DAFTAR DATA DINAMIS
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                        when (tabIndex) {
+                                                when (tabIndex) {
                             0 -> { 
                                 item {
                                     SectionHeader("STATUS GEMPA LOKAL", Color.Red, "Data: $waktuSinkron WIB")
-                                    // SENSOR KETUKAN: Menyentuh kartu gempa memicu pergeseran panel popup
+                                    // TRIGGER LOKAL: Mengirim data fisis Litosfer utama
                                     KartuLokalStatus(lokasi, skala, status, warnaStatus) {
+                                        dataForensikAktif = ParameterForensik(
+                                            magnitudo = skala,
+                                            kedalaman = "Episenter Dangkal (Est)",
+                                            koordinat = "Litosfer Grid Lokal",
+                                            potensi = status,
+                                            waktu = "$waktuSinkron WIB",
+                                            lokasi = lokasi,
+                                            jarak = "0 KM (Titik Pantau Aktif: $namaLokasiDinamis)"
+                                        )
                                         tampilDetailGempa = true
                                     }
                                     Spacer(modifier = Modifier.height(24.dp))
@@ -262,14 +272,45 @@ class MainActivity : ComponentActivity() {
                             1 -> { 
                                 item { SectionHeader("GEMPA BUMI DOMESTIK (INDONESIA)", Color.Yellow) }
                                 if (listDomestik.isEmpty()) item { Text("Tidak ada gempa domestik signifikan.", color = Color.Gray) }
-                                items(listDomestik) { anomali -> KartuAnomaliJaringan(anomali); Spacer(modifier = Modifier.height(12.dp)) }
+                                items(listDomestik) { anomali -> 
+                                    // TRIGGER DOMESTIK
+                                    KartuAnomaliJaringan(anomali) {
+                                        dataForensikAktif = ParameterForensik(
+                                            magnitudo = anomali.skala,
+                                            kedalaman = "Data Terbatas",
+                                            koordinat = "Teritori: ${anomali.negara}",
+                                            potensi = anomali.bahaya,
+                                            waktu = anomali.waktu,
+                                            lokasi = anomali.entitas,
+                                            jarak = "Ekstraksi Spasial Menunggu Kalkulasi"
+                                        )
+                                        tampilDetailGempa = true
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp)) 
+                                }
                             }
                             2 -> { 
                                 item { SectionHeader("GEMPA BUMI GLOBAL (MAG ≥ 5.0)", Color.Red) }
                                 if (listGlobal.isEmpty()) item { Text("Tidak ada gempa global signifikan.", color = Color.Gray) }
-                                items(listGlobal) { anomali -> KartuAnomaliJaringan(anomali); Spacer(modifier = Modifier.height(12.dp)) }
+                                items(listGlobal) { anomali -> 
+                                    // TRIGGER GLOBAL
+                                    KartuAnomaliJaringan(anomali) {
+                                        dataForensikAktif = ParameterForensik(
+                                            magnitudo = anomali.skala,
+                                            kedalaman = "Data Terbatas",
+                                            koordinat = "Teritori: ${anomali.negara}",
+                                            potensi = anomali.bahaya,
+                                            waktu = anomali.waktu,
+                                            lokasi = anomali.entitas,
+                                            jarak = "Di Luar Jangkauan Sensor Teritorial"
+                                        )
+                                        tampilDetailGempa = true
+                                    }
+                                    Spacer(modifier = Modifier.height(12.dp)) 
+                                }
                             }
                         }
+
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             Divider(color = Color.DarkGray, thickness = 1.dp)
@@ -341,7 +382,7 @@ class MainActivity : ComponentActivity() {
                             
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                                        LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 item {
                                     SectionHeader("PETA SEBARAN GUNCANGAN (EPISENTER)", Color.Yellow)
                                     KartuRadarTaktisPlaceholder()
@@ -349,22 +390,23 @@ class MainActivity : ComponentActivity() {
                                     
                                     SectionHeader("PARAMETER INTENSITAS UTAMA", Color.Red)
                                     KartuGempaUtama(
-                                        magnitudo = "6.7",
-                                        kedalaman = "10 Km",
-                                        koordinat = "1.04 LS | 120.23 BT",
-                                        potensi = "Tidak Berpotensi Tsunami"
+                                        magnitudo = dataForensikAktif.magnitudo,
+                                        kedalaman = dataForensikAktif.kedalaman,
+                                        koordinat = dataForensikAktif.koordinat,
+                                        potensi = dataForensikAktif.potensi
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     
                                     SectionHeader("DETAIL SPASIAL & TEMPORAL", Color(0xFF00BFFF))
                                     KartuDetailGempa(
-                                        waktu = "16 Juni 2026, 10:27:44 WIB",
-                                        lokasiGempa = "42 km Tenggara PALU-SULTENG",
-                                        jarak = "1272 KM dari $namaLokasiDinamis"
+                                        waktu = dataForensikAktif.waktu,
+                                        lokasiGempa = dataForensikAktif.lokasi,
+                                        jarak = dataForensikAktif.jarak
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
+
                         }
                     }
                 }
@@ -582,12 +624,24 @@ fun KartuLokalStatus(lokasi: String, skala: String, status: String, warna: Color
 }
 
 @Composable
-fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork) {
+fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork, onClick: () -> Unit) {
     val warnaVisual = parseWarnaZf(data.warna_kode)
-    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFF151515)).border(1.dp, warnaVisual.copy(alpha=0.3f)).padding(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF151515))
+            .border(1.dp, warnaVisual.copy(alpha=0.3f))
+            .clickable { onClick() } // MENGAKTIFKAN DETEKSI SENTUHAN
+            .padding(16.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(data.negara.uppercase(), color = warnaVisual, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text(data.waktu, color = Color.Gray, fontSize = 10.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(data.waktu, color = Color.Gray, fontSize = 10.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("[ FORENSIK ↗ ]", color = Color.LightGray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(data.entitas, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -602,6 +656,7 @@ fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork) {
         Text("Status: ${data.bahaya}", color = warnaVisual, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
+
 
 // ================= LAYOUT FORENSIK POP-UP INDEPENDEN ================= //
 
@@ -673,3 +728,14 @@ fun DetailBarisData(label: String, nilai: String) {
         Text(nilai, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
     }
 }
+
+// ================= STRUKTUR MEMORI FORENSIK ================= //
+data class ParameterForensik(
+    val magnitudo: String = "-",
+    val kedalaman: String = "-",
+    val koordinat: String = "-",
+    val potensi: String = "-",
+    val waktu: String = "-",
+    val lokasi: String = "-",
+    val jarak: String = "-"
+)

@@ -18,6 +18,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.AsyncImagePainter
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -837,17 +840,12 @@ fun hitungJarakGeodesis(lat1: Double, lon1: Double, lat2: Double, lon2: Double):
 }
 
 
-// ================= PROTOKOL ISOLASI VISUAL ================= //
+// ================= PROTOKOL ISOLASI VISUAL & EKSTRAKSI LOG ================= //
 @Composable
 fun LayarUjiVisualAbsolut() {
-    // Koordinat Statis (Kendal)
     val lat = -6.9535
     val lon = 110.2312
-    
-    // Tautan Uji 1: Server OSM Hardcoded
     val urlOsm = "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=5&size=500x300&maptype=mapnik&markers=$lat,$lon,red-pushpin"
-    
-    // Tautan Uji 2: Server Gambar Global (Wikimedia) sebagai Pembanding Fisis
     val urlGambarStabil = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg/500px-Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg"
 
     Column(
@@ -858,22 +856,33 @@ fun LayarUjiVisualAbsolut() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("DIAGNOSA MESIN RENDER COIL", color = Color.White, fontWeight = FontWeight.Bold)
+        Text("DIAGNOSA FORENSIK MESIN COIL", color = Color.White, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- PENGUJIAN 1: PROVIDER OSM ---
         Text("1. MATRIKS OPENSTREETMAP", color = Color.Yellow, fontSize = 12.sp)
-        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray)) {
-            AsyncImage(
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(urlOsm)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36")
                     .crossfade(true)
                     .build(),
                 contentDescription = "Uji OSM",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
-            )
+            ) {
+                val state = painter.state
+                when (state) {
+                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Yellow)
+                    is AsyncImagePainter.State.Error -> {
+                        val errMsg = state.result.throwable.localizedMessage ?: "Unknown Ruptur"
+                        Text("GAGAL: $errMsg", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(8.dp))
+                    }
+                    is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                    else -> Text("Status Kosong", color = Color.Gray)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -882,8 +891,8 @@ fun LayarUjiVisualAbsolut() {
 
         // --- PENGUJIAN 2: PROVIDER STABIL ---
         Text("2. MATRIKS FAILSAFE (WIKIMEDIA)", color = Color.Green, fontSize = 12.sp)
-        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray)) {
-            AsyncImage(
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
+            SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(urlGambarStabil)
                     .crossfade(true)
@@ -891,7 +900,19 @@ fun LayarUjiVisualAbsolut() {
                 contentDescription = "Uji Coil Murni",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
-            )
+            ) {
+                val state = painter.state
+                when (state) {
+                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Green)
+                    is AsyncImagePainter.State.Error -> {
+                        val errMsg = state.result.throwable.localizedMessage ?: "Unknown Ruptur"
+                        Text("GAGAL: $errMsg", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(8.dp))
+                    }
+                    is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                    else -> Text("Status Kosong", color = Color.Gray)
+                }
+            }
         }
     }
 }
+

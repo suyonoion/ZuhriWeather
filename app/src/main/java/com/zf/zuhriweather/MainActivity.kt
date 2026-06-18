@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Divider
 import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
 import com.google.android.gms.location.LocationServices
@@ -67,6 +69,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
+        
+        ZuhriWeatherTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Berikan komentar (//) pada pemanggilan antarmuka utama Anda
+                    // MainScreen(...)ATAU ZuhriRadarScreen(...) 
+                    
+                    // Eksekusi fungsi penguji
+                    LayarUjiVisualAbsolut()
+                }
+            }
             val context = LocalContext.current
             val pref = remember { context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE) }
             val gson = remember { Gson() }
@@ -816,4 +831,64 @@ fun hitungJarakGeodesis(lat1: Double, lon1: Double, lat2: Double, lon2: Double):
     val jarak = rBumi * c
     
     return String.format("%.1f KM", jarak)
+}
+
+
+// ================= PROTOKOL ISOLASI VISUAL ================= //
+@Composable
+fun LayarUjiVisualAbsolut() {
+    // Koordinat Statis (Kendal)
+    val lat = -6.9535
+    val lon = 110.2312
+    
+    // Tautan Uji 1: Server OSM Hardcoded
+    val urlOsm = "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=5&size=500x300&maptype=mapnik&markers=$lat,$lon,red-pushpin"
+    
+    // Tautan Uji 2: Server Gambar Global (Wikimedia) sebagai Pembanding Fisis
+    val urlGambarStabil = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg/500px-Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg"
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF050505))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("DIAGNOSA MESIN RENDER COIL", color = Color.White, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- PENGUJIAN 1: PROVIDER OSM ---
+        Text("1. MATRIKS OPENSTREETMAP", color = Color.Yellow, fontSize = 12.sp)
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray)) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(urlOsm)
+                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Uji OSM",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Divider(color = Color.Gray)
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- PENGUJIAN 2: PROVIDER STABIL ---
+        Text("2. MATRIKS FAILSAFE (WIKIMEDIA)", color = Color.Green, fontSize = 12.sp)
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray)) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(urlGambarStabil)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Uji Coil Murni",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
 }

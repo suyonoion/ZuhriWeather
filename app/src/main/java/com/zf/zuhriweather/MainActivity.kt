@@ -840,13 +840,17 @@ fun hitungJarakGeodesis(lat1: Double, lon1: Double, lat2: Double, lon2: Double):
 }
 
 
-// ================= PROTOKOL ISOLASI VISUAL & EKSTRAKSI LOG ================= //
+// ================= PROTOKOL ISOLASI VISUAL TAHAP 2 ================= //
 @Composable
 fun LayarUjiVisualAbsolut() {
     val lat = -6.9535
     val lon = 110.2312
-    val urlOsm = "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=5&size=500x300&maptype=mapnik&markers=$lat,$lon,red-pushpin"
-    val urlGambarStabil = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg/500px-Globular_cluster_NGC_6093_-_B._Dagnello_%28NRAO_AUI_NSF%29.jpg"
+    
+    // Tautan Uji 1: Yandex Static Map (Resolusi Spasial)
+    val urlYandex = "https://static-maps.yandex.ru/1.x/?ll=$lon,$lat&z=5&l=map&pt=$lon,$lat,pm2rdl"
+    
+    // Tautan Uji 2: Peladen Gambar Netral Mutlak (Tanpa Firewall)
+    val urlNetral = "https://picsum.photos/500/300"
 
     Column(
         modifier = Modifier
@@ -856,25 +860,25 @@ fun LayarUjiVisualAbsolut() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("DIAGNOSA FORENSIK MESIN COIL", color = Color.White, fontWeight = FontWeight.Bold)
+        Text("DIAGNOSA KESTABILAN PROVIDER", color = Color.White, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- PENGUJIAN 1: PROVIDER OSM ---
-        Text("1. MATRIKS OPENSTREETMAP", color = Color.Yellow, fontSize = 12.sp)
+        // --- PENGUJIAN 1: PROVIDER YANDEX ---
+        Text("1. MATRIKS YANDEX", color = Color.Cyan, fontSize = 12.sp)
         Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(urlOsm)
+                    .data(urlYandex)
                     .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36")
                     .crossfade(true)
                     .build(),
-                contentDescription = "Uji OSM",
+                contentDescription = "Uji Yandex",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             ) {
                 val state = painter.state
                 when (state) {
-                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Yellow)
+                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Cyan)
                     is AsyncImagePainter.State.Error -> {
                         val errMsg = state.result.throwable.localizedMessage ?: "Unknown Ruptur"
                         Text("GAGAL: $errMsg", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(8.dp))
@@ -889,12 +893,12 @@ fun LayarUjiVisualAbsolut() {
         Divider(color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- PENGUJIAN 2: PROVIDER STABIL ---
-        Text("2. MATRIKS FAILSAFE (WIKIMEDIA)", color = Color.Green, fontSize = 12.sp)
+        // --- PENGUJIAN 2: PROVIDER NETRAL ---
+        Text("2. MATRIKS RENDER MURNI (PICSUM)", color = Color.Green, fontSize = 12.sp)
         Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(urlGambarStabil)
+                    .data(urlNetral)
                     .crossfade(true)
                     .build(),
                 contentDescription = "Uji Coil Murni",
@@ -915,4 +919,5 @@ fun LayarUjiVisualAbsolut() {
         }
     }
 }
+
 

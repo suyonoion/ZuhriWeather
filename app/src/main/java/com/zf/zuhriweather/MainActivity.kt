@@ -12,6 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -54,9 +58,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import androidx.compose.ui.layout.ContentScale
 
 class MainActivity : ComponentActivity() {
 
@@ -142,7 +143,6 @@ class MainActivity : ComponentActivity() {
             val listGlobal: List<MatriksAnomaliNetwork> = gson.fromJson(pref.getString("data_global", "[]"), typeAnomali) ?: emptyList()
 
             val warnaStatus = parseWarnaZf(warnaCode)
-                        val warnaStatus = parseWarnaZf(warnaCode)
             
             // TARIK DATA KOORDINAT ANDA DAN GEMPA LOKAL DARI MEMORI
             val userLat = pref.getFloat("last_lat", -6.9535f).toDouble()

@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        /* mulai hapus
+        
         setContent { 
             val context = LocalContext.current
             val pref = remember { context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE) }
@@ -466,22 +466,7 @@ class MainActivity : ComponentActivity() {
                 // --- AKHIR LAYER INTERAKTIF ---
             }
         }   
-       ========== */
         //end setContent
-        // ================== INJEKSI SIRKUIT PENGUJI ==================
-        setContent {
-            // Menggunakan MaterialTheme murni untuk menghindari ralat referensi tema lokal
-            androidx.compose.material3.MaterialTheme {
-                androidx.compose.material3.Surface(
-                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                    color = androidx.compose.ui.graphics.Color.Black
-                ) {
-                    LayarUjiVisualAbsolut()
-                }
-            }
-        }
-        // =============================================================
-
     }
 
     private fun cekIzinLokasi(context: Context): Boolean {
@@ -838,86 +823,3 @@ fun hitungJarakGeodesis(lat1: Double, lon1: Double, lat2: Double, lon2: Double):
     
     return String.format("%.1f KM", jarak)
 }
-
-
-// ================= PROTOKOL ISOLASI VISUAL TAHAP 2 ================= //
-@Composable
-fun LayarUjiVisualAbsolut() {
-    val lat = -6.9535
-    val lon = 110.2312
-    
-    // Tautan Uji 1: Yandex Static Map (Resolusi Spasial)
-    val urlYandex = "https://static-maps.yandex.ru/1.x/?ll=$lon,$lat&z=5&l=map&pt=$lon,$lat,pm2rdl"
-    
-    // Tautan Uji 2: Peladen Gambar Netral Mutlak (Tanpa Firewall)
-    val urlNetral = "https://picsum.photos/500/300"
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("DIAGNOSA KESTABILAN PROVIDER", color = Color.White, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- PENGUJIAN 1: PROVIDER YANDEX ---
-        Text("1. MATRIKS YANDEX", color = Color.Cyan, fontSize = 12.sp)
-        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(urlYandex)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36")
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Uji Yandex",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            ) {
-                val state = painter.state
-                when (state) {
-                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Cyan)
-                    is AsyncImagePainter.State.Error -> {
-                        val errMsg = state.result.throwable.localizedMessage ?: "Unknown Ruptur"
-                        Text("GAGAL: $errMsg", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(8.dp))
-                    }
-                    is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                    else -> Text("Status Kosong", color = Color.Gray)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = Color.Gray)
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // --- PENGUJIAN 2: PROVIDER NETRAL ---
-        Text("2. MATRIKS RENDER MURNI (PICSUM)", color = Color.Green, fontSize = 12.sp)
-        Box(modifier = Modifier.fillMaxWidth().height(200.dp).border(1.dp, Color.DarkGray), contentAlignment = Alignment.Center) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(urlNetral)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "Uji Coil Murni",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            ) {
-                val state = painter.state
-                when (state) {
-                    is AsyncImagePainter.State.Loading -> CircularProgressIndicator(color = Color.Green)
-                    is AsyncImagePainter.State.Error -> {
-                        val errMsg = state.result.throwable.localizedMessage ?: "Unknown Ruptur"
-                        Text("GAGAL: $errMsg", color = Color.Red, fontSize = 10.sp, modifier = Modifier.padding(8.dp))
-                    }
-                    is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                    else -> Text("Status Kosong", color = Color.Gray)
-                }
-            }
-        }
-    }
-}
-
-

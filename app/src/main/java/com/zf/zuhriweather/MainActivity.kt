@@ -14,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.animation.AnimatedVisibility
@@ -240,8 +242,8 @@ class MainActivity : ComponentActivity() {
                // FASE 3 LOKAL:
           KartuLokalStatus(lokasi, skala, status, warnaStatus) {
                  val jarakNyata = hitungJarakGeodesis(
-                  lat1 = targetLat,  // Koordinat mutlak Anda
-                  lon1 = targetLon, 
+                  lat1 = userLat,  // Koordinat mutlak Anda
+                  lon1 = userLon, 
                   lat2 = bencanaLat, // Koordinat mutlak Gempa Lokal
                   lon2 = bencanaLon
                   )
@@ -301,8 +303,8 @@ class MainActivity : ComponentActivity() {
                 // 1. Ambil data koordinat dari objek 'anomali' yang dikirim peladen
                 // (Asumsi objek 'anomali' memiliki properti lat dan lon dari JSON Backend)
                 val jarakKeEpisenter = hitungJarakGeodesis(
-                    lat1 = targetLat, 
-                    lon1 = targetLon, 
+                    lat1 = userLat, 
+                    lon1 = userLon, 
                     lat2 = anomali.latitude,  // Menarik data spasial peladen
                     lon2 = anomali.longitude
                 )
@@ -332,8 +334,8 @@ class MainActivity : ComponentActivity() {
             KartuAnomaliJaringan(anomali) {
                 // 1. Eksekusi kalkulasi jarak lintang benua/samudra (Haversine Absolut)
                 val jarakKeEpisenter = hitungJarakGeodesis(
-                    lat1 = targetLat, 
-                    lon1 = targetLon, 
+                    lat1 = userLat, 
+                    lon1 = userLon, 
                     lat2 = anomali.latitude,  // Variabel Lintang dari peladen
                     lon2 = anomali.longitude  // Variabel Bujur dari peladen
                 )
@@ -712,8 +714,6 @@ fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork, onClick: () -> Unit) {
 // ================= LAYOUT FORENSIK POP-UP INDEPENDEN ================= //
 
 // ================= RENDER PETA GUNCANGAN DINAMIS ================= //
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.Box
 
 @Composable
 fun KartuPetaGuncangan(urlPeta: String) {

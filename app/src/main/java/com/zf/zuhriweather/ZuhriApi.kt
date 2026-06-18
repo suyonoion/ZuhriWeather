@@ -24,9 +24,18 @@ data class ProyeksiHari(val hari: String, val suhu_max: String, val suhu_min: St
 data class BencanaData(val lokasi: String, val skala: String, val status_bahaya: String, val kode_warna: String)
 
 data class MatriksAnomaliNetwork(
-    val negara: String, val entitas: String, val jenis: String, 
-    val probabilitas: String, val skala: String, val bahaya: String, 
-    val waktu: String, val warna_kode: String
+    val negara: String, 
+    val entitas: String, 
+    val jenis: String, 
+    val probabilitas: String, 
+    val skala: String, 
+    val bahaya: String, 
+    val waktu: String, 
+    val warna_kode: String,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val kedalaman: String = "-",
+    val url_peta: String = "-"
 )
 
 interface HfApi {

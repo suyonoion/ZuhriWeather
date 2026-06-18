@@ -240,8 +240,8 @@ class MainActivity : ComponentActivity() {
                // FASE 3 LOKAL:
           KartuLokalStatus(lokasi, skala, status, warnaStatus) {
                  val jarakNyata = hitungJarakGeodesis(
-                  lat1 = userLat,  // Koordinat mutlak Anda
-                  lon1 = userLon, 
+                  lat1 = targetLat,  // Koordinat mutlak Anda
+                  lon1 = targetLon, 
                   lat2 = bencanaLat, // Koordinat mutlak Gempa Lokal
                   lon2 = bencanaLon
                   )
@@ -301,8 +301,8 @@ class MainActivity : ComponentActivity() {
                 // 1. Ambil data koordinat dari objek 'anomali' yang dikirim peladen
                 // (Asumsi objek 'anomali' memiliki properti lat dan lon dari JSON Backend)
                 val jarakKeEpisenter = hitungJarakGeodesis(
-                    lat1 = userLat, 
-                    lon1 = userLon, 
+                    lat1 = targetLat, 
+                    lon1 = targetLon, 
                     lat2 = anomali.latitude,  // Menarik data spasial peladen
                     lon2 = anomali.longitude
                 )
@@ -332,8 +332,8 @@ class MainActivity : ComponentActivity() {
             KartuAnomaliJaringan(anomali) {
                 // 1. Eksekusi kalkulasi jarak lintang benua/samudra (Haversine Absolut)
                 val jarakKeEpisenter = hitungJarakGeodesis(
-                    lat1 = userLat, 
-                    lon1 = userLon, 
+                    lat1 = targetLat, 
+                    lon1 = targetLon, 
                     lat2 = anomali.latitude,  // Variabel Lintang dari peladen
                     lon2 = anomali.longitude  // Variabel Bujur dari peladen
                 )
@@ -712,17 +712,19 @@ fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork, onClick: () -> Unit) {
 // ================= LAYOUT FORENSIK POP-UP INDEPENDEN ================= //
 
 // ================= RENDER PETA GUNCANGAN DINAMIS ================= //
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Box
+
 @Composable
 fun KartuPetaGuncangan(urlPeta: String) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFF0F0F0F))
             .border(1.dp, Color(0xFF333333)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
         if (urlPeta.isNotEmpty() && urlPeta != "-") {
             AsyncImage(
@@ -735,13 +737,15 @@ fun KartuPetaGuncangan(urlPeta: String) {
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Failsafe jika tautan gambar tidak disuplai oleh peladen
-            Text("DATA PETA GUNCANGAN ABSEN", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Menunggu transmisi visual dari jaringan...", color = Color.Gray, fontSize = 10.sp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("DATA PETA GUNCANGAN ABSEN", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Menunggu transmisi koordinat...", color = Color.Gray, fontSize = 10.sp)
+            }
         }
     }
 }
+
 
 @Composable
 fun KartuGempaUtama(magnitudo: String, kedalaman: String, koordinat: String, potensi: String) {

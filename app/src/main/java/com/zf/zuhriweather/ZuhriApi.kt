@@ -21,7 +21,17 @@ data class CuacaData(val suhu: String, val angin: String, val kelembapan: String
 data class ProyeksiCuacaData(val per_jam: List<ProyeksiJam>, val harian: List<ProyeksiHari>)
 data class ProyeksiJam(val waktu: String, val suhu: String, val probabilitas_hujan: String)
 data class ProyeksiHari(val hari: String, val suhu_max: String, val suhu_min: String, val prob_hujan: String)
-data class BencanaData(val lokasi: String, val skala: String, val status_bahaya: String, val kode_warna: String)
+
+data class BencanaData(
+    val lokasi: String, 
+    val skala: String, 
+    val status_bahaya: String, 
+    val kode_warna: String,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val kedalaman: String = "-",
+    val url_peta: String = "-"
+)
 
 data class MatriksAnomaliNetwork(
     val negara: String, 

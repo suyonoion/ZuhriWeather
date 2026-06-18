@@ -54,6 +54,9 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
 
 class MainActivity : ComponentActivity() {
 
@@ -139,6 +142,16 @@ class MainActivity : ComponentActivity() {
             val listGlobal: List<MatriksAnomaliNetwork> = gson.fromJson(pref.getString("data_global", "[]"), typeAnomali) ?: emptyList()
 
             val warnaStatus = parseWarnaZf(warnaCode)
+                        val warnaStatus = parseWarnaZf(warnaCode)
+            
+            // TARIK DATA KOORDINAT ANDA DAN GEMPA LOKAL DARI MEMORI
+            val userLat = pref.getFloat("last_lat", -6.9535f).toDouble()
+            val userLon = pref.getFloat("last_lon", 110.2312f).toDouble()
+            
+            val bencanaLat = pref.getFloat("bencana_lat", 0f).toDouble()
+            val bencanaLon = pref.getFloat("bencana_lon", 0f).toDouble()
+            val bencanaKedalaman = pref.getString("bencana_kedalaman", "-") ?: "-"
+            val bencanaUrl = pref.getString("bencana_url", "-") ?: "-"
             var tabIndex by remember { mutableStateOf(0) }
             val tabTitles = listOf("LOKAL", "DOMESTIK", "GLOBAL") // TABULASI KEMBALI KE STRUKTUR TERITORIAL MURNI
 
@@ -224,20 +237,29 @@ class MainActivity : ComponentActivity() {
                             0 -> { 
                                 item {
                                     SectionHeader("STATUS GEMPA LOKAL", Color.Red, "Data: $waktuSinkron WIB")
-                                    // TRIGGER LOKAL: Mengirim data fisis Litosfer utama
-                                    KartuLokalStatus(lokasi, skala, status, warnaStatus) {
-                                        dataForensikAktif = ParameterForensik(
-                                            magnitudo = skala,
-                                            kedalaman = "Episenter Dangkal (Est)",
-                                            koordinat = "Litosfer Grid Lokal",
-                                            potensi = status,
-                                            waktu = "$waktuSinkron WIB",
-                                            lokasi = lokasi,
-                                            jarak = "0 KM (Titik Pantau Aktif: $namaLokasiDinamis)"
-                                        )
-                                        tampilDetailGempa = true
-                                    }
-                                    Spacer(modifier = Modifier.height(24.dp))
+               // FASE 3 LOKAL:
+          KartuLokalStatus(lokasi, skala, status, warnaStatus) {
+                 val jarakNyata = hitungJarakGeodesis(
+                  lat1 = userLat,  // Koordinat mutlak Anda
+                  lon1 = userLon, 
+                  lat2 = bencanaLat, // Koordinat mutlak Gempa Lokal
+                  lon2 = bencanaLon
+                  )
+
+              dataForensikAktif = ParameterForensik(
+                  magnitudo = skala,
+                  kedalaman = bencanaKedalaman,
+                  koordinat = "$bencanaLat | $bencanaLon",
+                  potensi = status,
+                  waktu = "$waktuSinkron WIB",
+                  lokasi = lokasi,
+                  jarak = "$jarakNyata dari Posisi Radar Aktif",
+                  urlPeta = bencanaUrl
+              )
+                  tampilDetailGempa = true
+          }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
                                     SectionHeader("KONDISI CUACA SAAT INI", Color(0xFF00BFFF), "Target: $namaLokasiDinamis")
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -270,45 +292,69 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             1 -> { 
-                                item { SectionHeader("GEMPA BUMI DOMESTIK (INDONESIA)", Color.Yellow) }
-                                if (listDomestik.isEmpty()) item { Text("Tidak ada gempa domestik signifikan.", color = Color.Gray) }
-                                items(listDomestik) { anomali -> 
-                                    // TRIGGER DOMESTIK
-                                    KartuAnomaliJaringan(anomali) {
-                                        dataForensikAktif = ParameterForensik(
-                                            magnitudo = anomali.skala,
-                                            kedalaman = "Data Terbatas",
-                                            koordinat = "Teritori: ${anomali.negara}",
-                                            potensi = anomali.bahaya,
-                                            waktu = anomali.waktu,
-                                            lokasi = anomali.entitas,
-                                            jarak = "Ekstraksi Spasial Menunggu Kalkulasi"
-                                        )
-                                        tampilDetailGempa = true
-                                    }
-                                    Spacer(modifier = Modifier.height(12.dp)) 
-                                }
-                            }
-                            2 -> { 
-                                item { SectionHeader("GEMPA BUMI GLOBAL (MAG ≥ 5.0)", Color.Red) }
-                                if (listGlobal.isEmpty()) item { Text("Tidak ada gempa global signifikan.", color = Color.Gray) }
-                                items(listGlobal) { anomali -> 
-                                    // TRIGGER GLOBAL
-                                    KartuAnomaliJaringan(anomali) {
-                                        dataForensikAktif = ParameterForensik(
-                                            magnitudo = anomali.skala,
-                                            kedalaman = "Data Terbatas",
-                                            koordinat = "Teritori: ${anomali.negara}",
-                                            potensi = anomali.bahaya,
-                                            waktu = anomali.waktu,
-                                            lokasi = anomali.entitas,
-                                            jarak = "Di Luar Jangkauan Sensor Teritorial"
-                                        )
-                                        tampilDetailGempa = true
-                                    }
-                                    Spacer(modifier = Modifier.height(12.dp)) 
-                                }
-                            }
+        item { SectionHeader("GEMPA BUMI DOMESTIK (INDONESIA)", Color.Yellow) }
+        if (listDomestik.isEmpty()) item { Text("Tidak ada gempa domestik signifikan.", color = Color.Gray) }
+        
+        items(listDomestik) { anomali -> 
+            // FASE 3 DOMESTIK:
+            KartuAnomaliJaringan(anomali) {
+                // 1. Ambil data koordinat dari objek 'anomali' yang dikirim peladen
+                // (Asumsi objek 'anomali' memiliki properti lat dan lon dari JSON Backend)
+                val jarakKeEpisenter = hitungJarakGeodesis(
+                    lat1 = userLat, 
+                    lon1 = userLon, 
+                    lat2 = anomali.latitude,  // Menarik data spasial peladen
+                    lon2 = anomali.longitude
+                )
+
+                // 2. Timpa isi panel dengan data gempa domestik yang spesifik Anda ketuk
+                dataForensikAktif = ParameterForensik(
+                    magnitudo = anomali.skala,
+                    kedalaman = anomali.kedalaman, 
+                    koordinat = "${anomali.latitude} | ${anomali.longitude}",
+                    potensi = anomali.bahaya,
+                    waktu = anomali.waktu,
+                    lokasi = anomali.entitas,
+                    jarak = "$jarakKeEpisenter dari Posisi Anda",
+                    urlPeta = anomali.url_peta // Mengambil gambar shakemap BMKG dari backend
+                )
+                tampilDetailGempa = true // Buka panel
+            }
+            Spacer(modifier = Modifier.height(12.dp)) 
+        }
+    }
+                              2 -> { 
+        item { SectionHeader("GEMPA BUMI GLOBAL (MAG ≥ 5.0)", Color.Red) }
+        if (listGlobal.isEmpty()) item { Text("Tidak ada gempa global signifikan.", color = Color.Gray) }
+        
+        items(listGlobal) { anomali -> 
+            // FASE 3 GLOBAL:
+            KartuAnomaliJaringan(anomali) {
+                // 1. Eksekusi kalkulasi jarak lintang benua/samudra (Haversine Absolut)
+                val jarakKeEpisenter = hitungJarakGeodesis(
+                    lat1 = userLat, 
+                    lon1 = userLon, 
+                    lat2 = anomali.latitude,  // Variabel Lintang dari peladen
+                    lon2 = anomali.longitude  // Variabel Bujur dari peladen
+                )
+
+                // 2. Transmisi data fisis ke Panel Master Forensik
+                dataForensikAktif = ParameterForensik(
+                    magnitudo = anomali.skala,
+                    kedalaman = anomali.kedalaman ?: "Data Tidak Tersedia", 
+                    koordinat = "${anomali.latitude} | ${anomali.longitude}",
+                    potensi = anomali.bahaya,
+                    waktu = anomali.waktu,
+                    lokasi = "${anomali.entitas} (${anomali.negara.uppercase()})",
+                    jarak = "$jarakKeEpisenter dari Posisi Anda",
+                    urlPeta = anomali.url_peta ?: "-" // Tautan visual USGS/BMKG jika ada
+                )
+                tampilDetailGempa = true // Buka Tirai Forensik
+            }
+            Spacer(modifier = Modifier.height(12.dp)) 
+        }
+    }
+
                         }
 
                         item {
@@ -385,7 +431,7 @@ class MainActivity : ComponentActivity() {
                                                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 item {
                                     SectionHeader("PETA SEBARAN GUNCANGAN (EPISENTER)", Color.Yellow)
-                                    KartuRadarTaktisPlaceholder()
+                              KartuPetaGuncangan(urlPeta = dataForensikAktif.urlPeta)
                                     Spacer(modifier = Modifier.height(16.dp))
                                     
                                     SectionHeader("PARAMETER INTENSITAS UTAMA", Color.Red)
@@ -518,6 +564,11 @@ class MainActivity : ComponentActivity() {
                     putString("skala", respons.bencana.skala)
                     putString("status", respons.bencana.status_bahaya)
                     putString("warna", respons.bencana.kode_warna)
+                    // SUNTIKKAN MEMORI SPASIAL BARU:
+                    putFloat("bencana_lat", respons.bencana.latitude.toFloat())
+                    putFloat("bencana_lon", respons.bencana.longitude.toFloat())
+                    putString("bencana_kedalaman", respons.bencana.kedalaman)
+                    putString("bencana_url", respons.bencana.url_peta)
                     putString("waktu_sinkron", waktuSekarang)
                     
                     putString("proyeksi_jam", gson.toJson(respons.proyeksi_cuaca.per_jam))
@@ -660,28 +711,34 @@ fun KartuAnomaliJaringan(data: MatriksAnomaliNetwork, onClick: () -> Unit) {
 
 // ================= LAYOUT FORENSIK POP-UP INDEPENDEN ================= //
 
+// ================= RENDER PETA GUNCANGAN DINAMIS ================= //
 @Composable
-fun KartuRadarTaktisPlaceholder() {
+fun KartuPetaGuncangan(urlPeta: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(200.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFF0F0F0F))
             .border(1.dp, Color(0xFF333333)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("🎯", fontSize = 24.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("MATRIKS SEBARAN GUNCANGAN", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("III", "IV", "V", "VI", "VIII").forEach { mmi ->
-                Box(
-                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFF1A1A1A)).padding(horizontal = 8.dp, vertical = 4.dp)
-                ) { Text("MMI $mmi", color = Color.Yellow, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
-            }
+        if (urlPeta.isNotEmpty() && urlPeta != "-") {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(urlPeta)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Matriks Sebaran Guncangan Litosfer",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Failsafe jika tautan gambar tidak disuplai oleh peladen
+            Text("DATA PETA GUNCANGAN ABSEN", color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Menunggu transmisi visual dari jaringan...", color = Color.Gray, fontSize = 10.sp)
         }
     }
 }
@@ -737,5 +794,22 @@ data class ParameterForensik(
     val potensi: String = "-",
     val waktu: String = "-",
     val lokasi: String = "-",
-    val jarak: String = "-"
+    val jarak: String = "-",
+    val urlPeta: String = ""
 )
+
+// ================= KALKULATOR SPASIAL (HAVERSINE FORMULA) ================= //
+fun hitungJarakGeodesis(lat1: Double, lon1: Double, lat2: Double, lon2: Double): String {
+    val rBumi = 6371.0 // Radius mutlak bumi dalam kilometer
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    
+    val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+            
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    val jarak = rBumi * c
+    
+    return String.format("%.1f KM", jarak)
+}

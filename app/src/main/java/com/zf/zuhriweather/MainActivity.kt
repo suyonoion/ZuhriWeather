@@ -67,21 +67,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        setContent {
-        
-        ZuhriWeatherTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    // Berikan komentar (//) pada pemanggilan antarmuka utama Anda
-                    // MainScreen(...)ATAU ZuhriRadarScreen(...) 
-                    
-                    // Eksekusi fungsi penguji
-                    LayarUjiVisualAbsolut()
-                }
-            }
+        /* mulai hapus
+        setContent { 
             val context = LocalContext.current
             val pref = remember { context.getSharedPreferences("ZF_STORAGE", Context.MODE_PRIVATE) }
             val gson = remember { Gson() }
@@ -434,7 +421,7 @@ class MainActivity : ComponentActivity() {
                                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                                 .background(Color(0xFF121212))
                                 .border(1.dp, Color(0xFF2A2A2A), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                                .clickable(enabled = false) { /* Menghentikan penutupan tak sengaja jika area dalam ditekan */ }
+                                .clickable(enabled = false) {   }
                                 .padding(16.dp)
                         ) {
                             // Header Panel Forensik
@@ -475,7 +462,22 @@ class MainActivity : ComponentActivity() {
                 }
                 // --- AKHIR LAYER INTERAKTIF ---
             }
+        }   
+       ========== */
+        //end setContent
+          // ================== INJEKSI SIRKUIT PENGUJI ==================
+        // Kita ciptakan portal antarmuka baru yang murni dan terisolasi
+        setContent {
+            ZuhriWeatherTheme {
+                androidx.compose.material3.Surface(
+                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
+                ) {
+                    LayarUjiVisualAbsolut()
+                }
+            }
         }
+        // =============================================================
     }
 
     private fun cekIzinLokasi(context: Context): Boolean {
